@@ -148,7 +148,7 @@ wheels = [
 
 [[package]]
 name = "docker-devkit"
-version = "0.1.9"
+version = "0.1.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
@@ -158,9 +158,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/d6/d3a82d0f4c099b55ba7f3f788d76fe2782f8c9329a30e7949aceeefd56fb/docker_devkit-0.1.9.tar.gz", hash = "sha256:e510f4d4f42897986f1142197f865c8f521db6b06c9608389eeb5d722553a2bd", size = 42821, upload-time = "2026-09-23T03:09:49.654Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/9c/f8acd259102a7a19678da86f4d98330025efd85cf9d07c9f8704b291a846/docker_devkit-0.1.10.tar.gz", hash = "sha256:ea9b674ff9fbd002e54ec03ae04e7cd253474f7ec63e17029d9367ec99079694", size = 42926, upload-time = "2026-09-23T15:24:31.474Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/b9/a1823df72fbdb8ba8a0d9568d8a30b59014e4dc53a56896e99c8b774443c/docker_devkit-0.1.9-py3-none-any.whl", hash = "sha256:21c9ff8020024e19bddc3f3fd5d23de0410ab6dee5f604c457c69f2b4bafc79d", size = 17883, upload-time = "2026-09-23T03:09:48.637Z" },
+    { url = "https://files.pythonhosted.org/packages/79/42/9c1a950ef6f10d097101bb5df877c401226ee8eda0757558b443062f0226/docker_devkit-0.1.10-py3-none-any.whl", hash = "sha256:9af29cece7c44560c532b88f03156dffb46365ce79274530d0bcdc9d0904e348", size = 18015, upload-time = "2026-09-23T15:24:30.471Z" },
 ]
 
 [[package]]
