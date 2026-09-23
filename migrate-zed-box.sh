@@ -4,10 +4,12 @@
 # ends at static 169.254.0.1/16 with no gateway/DNS, the host's NAT state is
 # removed, and the host port falls back to zero-config APIPA on the same
 # cable. Run on the operator laptop with the box attached by the direct
-# ethernet cable: ./migrate-zed-box.sh [<cable-nic>]. The NIC argument is only
-# needed if auto-detection fails. Every step checks before changing anything,
-# so a partial run can simply be re-run. Delete this script once every box
-# has been migrated.
+# ethernet cable: ./migrate-zed-box.sh [--host-only] [<cable-nic>]. The NIC
+# argument is only needed if auto-detection fails. --host-only skips the box
+# renumber entirely — for a box that never went through the old installer's
+# renumber (factory state) and only needs the host's retired state removed.
+# Every step checks before changing anything, so a partial run can simply be
+# re-run. Delete this script once every box has been migrated.
 
 set -euo pipefail
 
@@ -15,10 +17,18 @@ BOX_OLD_TARGET=user@100.64.0.1
 BOX_NEW_IP=169.254.0.1
 OLD_SUBNET=100.64.0.0/24
 
+HOST_ONLY=false
+if [ "${1:-}" = "--host-only" ]; then
+    HOST_ONLY=true
+    shift
+fi
+
 log() { printf '\n== %s ==\n' "$*"; }
 port_open() { timeout 3 bash -c "echo > /dev/tcp/$1/22" >/dev/null 2>&1; }
 
-if port_open "$BOX_NEW_IP"; then
+if $HOST_ONLY; then
+    log "skipping the box renumber (--host-only)"
+elif port_open "$BOX_NEW_IP"; then
     log "box already reachable at $BOX_NEW_IP - skipping the box renumber"
 else
     log "checking the old path (ssh $BOX_OLD_TARGET)"
@@ -115,5 +125,7 @@ for _ in $(seq 1 90); do
 done
 
 echo "the box did not answer at $BOX_NEW_IP within 90s of host cleanup" >&2
-echo "unplug and replug the cable once, then re-run this script (idempotent)" >&2
+echo "a factory box sits at a random link-local address until claimed - that is expected:" >&2
+echo "run: uv run install-zed   (it ARP-discovers and claims the box)" >&2
+echo "if that reports no box discovered either, unplug/replug the cable and retry" >&2
 exit 1
