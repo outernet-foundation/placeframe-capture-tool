@@ -184,6 +184,15 @@ warmup can't download anything even if the SDK tries — that is the point.
   amd64 host errors without `--platform linux/arm64` (or a digest pin) — default-mode
   image acquisition must use one of the two. Nuance: a digest-ref-only image loses
   `RepoDigests` metadata through save/load; the tree-SHA *tagged* flow is unaffected.
+- **ZED devel per-arch digest resolved and COPY source verified** (for P4.1):
+  `5.2-tools-devel-jetson-jp6.1.0` index is `d23d3300…`, linux/arm64 manifest is
+  `bb950068…`; pulling it and listing (create+cp) shows
+  `/usr/local/zed/firmware/ZEDX/` holds exactly `zedx_ar0234.isp` +
+  `zedx_imx678.isp` — the multi-stage COPY source is confirmed on the real image.
+- **calib.stereolabs.com serves HTTP 200 placeholders for unknown serials** (for
+  P4.2, verified 2026-09-23): a bogus SN returns 200 with a 169-byte all-zero conf,
+  so `curl -f` cannot validate the serial. The installer validates the fetched conf
+  directly — a non-zero `fx` in any section — and rejects the placeholder loudly.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
@@ -266,20 +275,20 @@ warmup can't download anything even if the SDK tries — that is the point.
 
 ### P4 — SDK artifact seeding + offline warmup (code commit: `Seed calibration and ISP profiles for offline camera open`)
 
-- [ ] 4.1 Bake the ZEDX `.isp` sensor profiles into the service image: add the
+- [x] 4.1 Bake the ZEDX `.isp` sensor profiles into the service image: add the
       `5.2-tools-devel-jetson-jp6.1.0` tag to `x-base-images` (new `.env.lock` key
       `ZED_DEVEL_DIGEST`, per-arch arm64 manifest digest — mirror-images then carries
       it; same distribution posture as the SDK already inside our public images) and
       multi-stage `COPY --from=<devel-stage> /usr/local/zed/firmware/ZEDX/` into the
       zed-capture image at the same path.
-- [ ] 4.2 Seed the per-camera calibration at install: read the camera serial on the box
+- [x] 4.2 Seed the per-camera calibration at install: read the camera serial on the box
       (physical label or an on-box diagnostic run — settle at implementation), fetch
       `https://calib.stereolabs.com/?SN=<serial>` on the host (which has internet),
       scp beside the other seeded files; `compose.rig.yml` bind-mounts it at
       `/usr/local/zed/settings/` and sets `ZED_SDK_DISABLE_DOWNLOAD=1` in the zed
       service environment. No SDK 5.3 bump and no firmware steps — no ZED X firmware
       exists, and the seeded file is calibration source #1 on every SDK version (§4).
-- [ ] 4.3 Warmup step stays as an offline assertion: camera open must succeed with no
+- [x] 4.3 Warmup step stays as an offline assertion: camera open must succeed with no
       default route. Failure is loud, names the missing artifact (calibration), and
       blocks install completion (no silent deferral to first capture).
 
@@ -411,3 +420,8 @@ worth a coi bug report either way — see §8).
   conf fetched once on the host. SDK stays 5.2: the 5.3 EEPROM path needs post-May-2026
   cameras or a one-time online `--dc` session on the box, and a bump drags base-image,
   pyzed, and actor-drift cost — a separate decision with its own bench validation.
+- **Camera serial source = operator prompt off the physical label** (P4.2
+  implementation ruling): every on-box serial read path goes through `Camera.open()`,
+  which is exactly the call that fails offline before the calibration is seeded — a
+  diagnostic open cannot bootstrap itself. The prompt runs once per box; the seeded
+  file makes later installs skip it (idempotency check on `SN*.conf`).
