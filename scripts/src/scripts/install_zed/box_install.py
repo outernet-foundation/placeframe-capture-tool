@@ -9,7 +9,7 @@ from pathlib import Path
 from subprocess import CalledProcessError
 
 import typer
-from bashrun.bash import bash, bash_check, bash_output
+from bashrun.bash import bash, bash_check, bash_output, bash_pipe
 
 from .constants import (
     APPLIANCE_BANNER_PATHS,
@@ -43,6 +43,7 @@ from .constants import (
     SSH_KEY,
     SSH_MUX,
     SSH_SOCKET,
+    STOCK_IMAGE_SHIP_TAG,
     SUDOERS_RULE,
     SYSTEMD_UNIT_SOURCE,
     WAIT_FOR_ZED_CAMERA_SOURCE,
@@ -56,9 +57,11 @@ from .messages import (
     BOX_STATIC_FLIP_TIMEOUT,
     FACTORY_LOGIN_REJECTED,
     IMAGE_PULL_FAILED,
+    IMAGE_UNRESOLVED_ON_BOX,
     NO_BOX_DISCOVERED,
     NO_BOX_WIRED_CONNECTION,
     NO_HOST_LINK_LOCAL_ADDRESS,
+    REGISTRY_PULL_FAILED,
 )
 from .ssh import ssh_check, ssh_output, ssh_run
 
@@ -153,13 +156,11 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         # keys the --build registry reference.
         host_ip = ssh_output("echo $SSH_CLIENT").split()[0]
 
-        # Acquire container images (pull from ghcr.io, or cross-compile via local registry).
-        images = _acquire_images(host_ip, build, service_shas)
-
-        # The stock observability images are never built locally: pulled from
-        # the org mirror in both install modes, digest-pinned from .env.lock.
-        for image in ZED_STOCK_IMAGES:
-            _pull_image_on_box(f"{image.reference}{stock_digests[image.digest_env]}")
+        # Acquire container images: host pulls + save|load across the cable
+        # (default), or cross-compile via the local registry (--build). The
+        # stock observability images are never built locally — digest-pinned
+        # mirror pulls shipped from the host in both modes.
+        images = _acquire_images(host_ip, build, service_shas, stock_digests)
 
         # Ship the compose file and supporting scripts. The aoa-alloy /
         # aoa-loki configs ship as files beside the compose file and mount
@@ -512,18 +513,28 @@ def _ensure_arm64_emulation() -> None:
     raise SystemExit(1)
 
 
-def _acquire_images(host_ip: str, build: bool, service_shas: dict[str, str]) -> dict[str, str]:
+def _acquire_images(
+    host_ip: str, build: bool, service_shas: dict[str, str], stock_digests: dict[str, str]
+) -> dict[str, str]:
+    stock_references = [f"{image.reference}{stock_digests[image.digest_env]}" for image in ZED_STOCK_IMAGES]
+
     if not build:
         images = {
             service.image_env: f"{GHCR_BASE}/{service.name}:{service_shas[service.sha_key]}" for service in ZED_SERVICES
         }
+        # The tree-SHA tags are single-platform arm64 manifests, so a plain
+        # pull on the amd64 host errors with no matching manifest. The stock
+        # refs are per-arch digests — platform-unambiguous without a flag.
         for image in images.values():
-            _pull_image_on_box(image)
+            _pull_image_on_host(image, "linux/arm64")
+        for image in stock_references:
+            _pull_image_on_host(image)
+        _ship_images_to_box(list(images.values()), stock_references)
         return images
 
-    # Local registry instead of `docker save | ssh docker load`: pulls are
-    # layer-aware, so iterative dev only ships changed layers across the
-    # cable.
+    # The local registry keeps first-party iteration cheap: pulls are
+    # layer-aware, so only changed layers cross the cable. The stock
+    # observability images have no iteration loop and ship by tarball below.
     if not bash_check("docker container inspect registry"):
         logger.info("starting_local_registry", extra={"port": REGISTRY_PORT})
         bash(
@@ -555,7 +566,9 @@ def _acquire_images(host_ip: str, build: bool, service_shas: dict[str, str]) -> 
     )
 
     # Docker treats `localhost` as insecure-by-default for push; the box's
-    # daemon needs the box-facing host IP in its insecure-registries.
+    # daemon needs the box-facing host IP in its insecure-registries. The
+    # host's link-local address churns across plugs; the presence check
+    # re-runs on every install and appends the current one.
     if ssh_check(f"grep -q {host_ip}:{REGISTRY_PORT} /etc/docker/daemon.json"):
         logger.info("box_insecure_registry_present", extra={"registry": f"{host_ip}:{REGISTRY_PORT}"})
     else:
@@ -568,14 +581,53 @@ def _acquire_images(host_ip: str, build: bool, service_shas: dict[str, str]) -> 
         ssh_run("sudo systemctl restart docker")
 
     for image in remote_images.values():
-        _pull_image_on_box(image)
+        _pull_image_from_registry(image)
+
+    for image in stock_references:
+        _pull_image_on_host(image)
+    _ship_images_to_box([], stock_references)
     return remote_images
 
 
-def _pull_image_on_box(image: str) -> None:
-    logger.info("pulling_image_on_box", extra={"image": image})
+def _pull_image_on_host(reference: str, platform: str | None = None) -> None:
+    logger.info("pulling_image_on_host", extra={"image": reference, "platform": platform})
+    platform_option = f"--platform {platform} " if platform else ""
+    try:
+        bash(f"docker pull {platform_option}{reference}")
+    except CalledProcessError:
+        typer.echo(IMAGE_PULL_FAILED.format(image=reference), err=True)
+        raise SystemExit(1)
+
+
+def _ship_images_to_box(tagged_references: list[str], digest_references: list[str]) -> None:
+    # Digest-pulled images carry no tag, and a tagless tarball loses
+    # RepoDigests through save/load — compose resolves the stock refs by
+    # digest on the box, so pin a transport tag on before saving.
+    save_references = list(tagged_references)
+    for digest_reference in digest_references:
+        tagged_reference = f"{digest_reference.split('@')[0]}:{STOCK_IMAGE_SHIP_TAG}"
+        bash(f"docker tag {digest_reference} {tagged_reference}")
+        save_references.append(tagged_reference)
+
+    logger.info("shipping_images_to_box", extra={"count": len(save_references)})
+    bash_pipe(
+        f"docker save {' '.join(save_references)}",
+        "gzip",
+        f"ssh {SSH_MUX} {BOX_SSH_TARGET} 'gunzip | sudo docker load'",
+    )
+
+    # The box is offline: if a reference does not resolve there after the
+    # load, compose has no fallback, so the failure must surface now.
+    for reference in [*tagged_references, *digest_references]:
+        if not ssh_check(f"sudo docker image inspect {reference}"):
+            typer.echo(IMAGE_UNRESOLVED_ON_BOX.format(image=reference), err=True)
+            raise SystemExit(1)
+
+
+def _pull_image_from_registry(image: str) -> None:
+    logger.info("pulling_image_from_registry", extra={"image": image})
     try:
         ssh_run(f"sudo docker pull {image}")
     except CalledProcessError:
-        typer.echo(IMAGE_PULL_FAILED.format(image=image), err=True)
+        typer.echo(REGISTRY_PULL_FAILED.format(image=image), err=True)
         raise SystemExit(1)

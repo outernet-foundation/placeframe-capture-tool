@@ -33,12 +33,17 @@ ZED_SERVICES: tuple[ZedService, ...] = (
 )
 
 # Observability stock images consumed straight from the org mirror,
-# digest-pinned via .env.lock — never built locally, pulled on the box in
-# both install modes.
+# per-arch arm64 manifest digests from .env.lock — never built locally,
+# pulled on the host and shipped to the box in both install modes.
 ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
     StockImage("ghcr.io/outernet-foundation/mirror/docker.io/grafana/loki", "LOKI_DIGEST"),
     StockImage("ghcr.io/outernet-foundation/mirror/docker.io/grafana/alloy", "ALLOY_DIGEST"),
 )
+
+# Transport tag pinned onto digest-pulled stock images before `docker save`:
+# a tagless image loses RepoDigests through save/load, and compose resolves
+# the stock refs by digest on the box.
+STOCK_IMAGE_SHIP_TAG = "placeframe-ship"
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 BAKE_FILE = REPO_ROOT / "compose.bake.yml"

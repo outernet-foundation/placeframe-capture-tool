@@ -12,9 +12,19 @@ Or skip local cross-compilation and pull prebuilt images from ghcr.io instead:
 BOX_ID_UNRESOLVABLE = "Could not resolve box id: /proc/device-tree/serial-number is empty or missing"
 
 IMAGE_PULL_FAILED = """\
-Image pull failed for {image}. Either the tag has not been pushed to ghcr.io
-yet, or the ZED Box is offline. Push via CI (merge/push to trigger the build
-workflow) or build locally with: uv run install-zed --build"""
+Host pull failed for {image}. Either the tag has not been pushed to ghcr.io
+yet, or this host has no internet. Push via CI (merge/push to trigger the
+build workflow) or build locally with: uv run install-zed --build"""
+
+IMAGE_UNRESOLVED_ON_BOX = """\
+Image {image} did not resolve on the box after the save|load transfer — the
+tarball lost the reference metadata. Re-run install-zed; if it persists,
+keep the install log and report it."""
+
+REGISTRY_PULL_FAILED = """\
+Box pull from the host-local registry failed for {image}. Check that the
+registry container is running on the host and that the box's
+insecure-registries entry matches the host's current link-local address."""
 
 BOX_LOGIN_PROMPT = "box login password (installs the install-zed SSH key and the passwordless sudo rule)"
 
