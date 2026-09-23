@@ -16,13 +16,15 @@ Worktree: `.worktrees/zed-install-tarball` (branch `zed-install-tarball`, off `d
 - **`--build` keeps the host-local registry untouched.** Layer-aware pulls across the
   cable are the iteration path for zed box logic; full tarballs per iteration are
   unacceptable. The registry + `insecure-registries` machinery stays.
-- **Firmware ships from the host, extracted from a mirrored Stereolabs image.** Mirroring
-  a standalone firmware `.bin` (or SDK installer) in CI is ruled out — that is standalone
-  distribution of their proprietary binaries. Extracting the bin from the image we already
-  mirror (and already publish publicly inside first-party images) adds no new distribution
-  act. Legal notes: Docker Hub `stereolabs/zed` declares no license; `stereolabs/zed-docker`
-  (recipes) is MIT; SDK binaries inside are proprietary under the installer EULA, whose
-  public agreement explicitly permits SDK object code incorporated into applications and
+- **Stereolabs proprietary bits ride inside mirrored images, never standalone.** Originated
+  as a firmware-extraction ruling; ZED X firmware turned out not to exist (§4), so the
+  ruling now governs the `.isp` profiles baked via the devel build stage. Mirroring a
+  standalone Stereolabs binary in CI is ruled out — that is standalone distribution of
+  their proprietary files. Copying bits out of images we already mirror (and already
+  publish publicly inside first-party images) adds no new distribution act. Legal notes:
+  Docker Hub `stereolabs/zed` declares no license; `stereolabs/zed-docker` (recipes) is
+  MIT; SDK binaries inside are proprietary under the installer EULA, whose public
+  agreement explicitly permits SDK object code incorporated into applications and
   prohibits standalone distribution. The extraction path is the already-accepted posture.
 - **Leftover NAT state is cleaned manually, once per host/box.** The new installer never
   creates it and never carries cleanup code — cleanup logic would be cruft after the fleet
@@ -31,9 +33,11 @@ Worktree: `.worktrees/zed-install-tarball` (branch `zed-install-tarball`, off `d
   documents never existed; the doc gets fixed, the flag is a follow-up (§8).
 - **Networking spine = deterministic link-local.** Box holds static `169.254.0.1/16`
   (no gateway, no DNS). Host side is zero-config: an unconfigured port + cable
-  auto-assigns an APIPA address (RFC 3927) after DHCP timeout (~45s/plug). Sandbox→box
-  reachability rides the same COI forward+masquerade path that carries `100.64.0.1`
-  traffic today; `169.254.0.0/16` is not in COI's RFC1918 deny set.
+  auto-assigns an APIPA address (RFC 3927) after DHCP timeout (~45s/plug) — sufficient
+  for host-shell deploys, which are the primary path. Sandbox→box needs a documented
+  one-time host rule pair (forward accept + masquerade, §7b): coi's restricted mode
+  explicitly rejects sandbox traffic to `169.254.0.0/16`, and today's `100.64.0.1` path
+  never carried sandbox-originated deploys either (§4).
 - **plan.md is tracked** on this branch (committed; unlike the extraction repo's untracked
   plan). Delete it when the last checkbox lands, same lifecycle discipline.
 
@@ -45,15 +49,16 @@ Worktree: `.worktrees/zed-install-tarball` (branch `zed-install-tarball`, off `d
  (APIPA addr,                          ├─ zed-capture + aoa stack (compose)
   zero config)                         ├─ images: docker load (default)
                                        │         or registry pull (--build)
- COI sandbox ─ forward+masq via host ──┘─ firmware: scp'd bin, offline open
+  COI sandbox ─ fwd+masq rule pair ─┘─ calibration: host-fetched conf, scp'd
 ```
 
 Install flow (default mode): probe `169.254.0.1:22` → (first contact: APIPA discovery →
 askpass bootstrap → scheduled flip to static, §5 P2) → sudoers refresh → docker .debs
 scp'd + `dpkg -i` → nvidia-ctk → disable `nv-l4t-usb-device-mode` → appliance strip →
-`/etc/hosts` entry → host pulls 5 images (arm64) → `docker save | gzip | ssh gunzip |
-docker load` → firmware bin extracted from mirrored image, scp'd → compose + configs +
-unit + `.env` → camera daemons → `compose up` → offline camera-open verification.
+`/etc/hosts` entry → host pulls 5 images (arm64, `--platform` or digest-pinned) →
+`docker save | gzip | ssh gunzip | docker load` → calibration conf fetched on host,
+scp'd → compose + configs + unit + `.env` → camera daemons → `compose up` → offline
+camera-open verification.
 
 What the box no longer gets: default gateway, DNS, any route off-link. The offline
 warmup can't download anything even if the SDK tries — that is the point.
@@ -88,8 +93,8 @@ warmup can't download anything even if the SDK tries — that is the point.
   refs move from index digests to **per-arch (arm64) manifest digests** in `.env.lock` —
   no runtime platform selection anywhere.
 - Warmup: offline verification, not a downloader (§5 P4).
-- `compose.rig.yml`: likely gains a `/usr/local/zed/firmware` bind mount (P4 verification
-  decides the exact path the SDK reads).
+- `compose.rig.yml`: gains a `/usr/local/zed/settings` bind mount (seeded per-SN
+  calibration conf) + `ZED_SDK_DISABLE_DOWNLOAD=1` in the zed service env (§5 P4).
 
 ## 4. Verified vs open
 
@@ -109,37 +114,127 @@ warmup can't download anything even if the SDK tries — that is the point.
   downloaded local file is absent and there is no internet. ZED X on 5.2 expected to match
   (verify at bench). Firmware updates: `.bin` files, `ZED_Explorer --updatefw <file>`
   headless-capable; firmware files live under `/usr/local/zed/firmware` in SDK installs.
+- **No ZED X firmware exists to ship** (2026-09-23, resolves open item 3): Stereolabs staff
+  confirm ZED X / X Mini / X One have no firmware updates at all
+  (`community.stereolabs.com/t/zedx-firmware-update/8527`) — the update UI on GMSL cameras
+  is a known display bug. Verified in the images: `5.2-runtime-jetson-jp6.1.0` (pulled by
+  per-arch manifest digest `6d1a76e8…`, create+cp, no exec) has no
+  `/usr/local/zed/firmware` directory whatsoever; `5.2-tools-devel-jetson-jp6.1.0` (full
+  rootfs listing) carries only USB-model bins (`ZED`, `ZED-M`, `ZED2`, `ZED2i`) plus two
+  ZEDX `.isp` sensor profiles. P4's extract-and-flash mechanism is moot; the devel-image
+  mirror fallback is not needed (no new `.env.lock` entry).
+- **Per-arch arm64 manifest digests resolved** (for P3.1): loki `3.5.0` →
+  `@sha256:4c28f6be7853785ca90273ce2a9f6ce0e7e4b55e2bfbdcf771a390c4a88da507`, alloy
+  `v1.9.0` → `@sha256:08b4fe15d159a1c3114a3939c4099ce8c2868ca0877a56f1d2efd48a9a601011`.
+- Pull-by-per-arch-digest is clean on this containerd daemon (no `--platform` involved);
+  the ZED base index (`6923135d…`) holds exactly one real manifest (linux/arm64 +
+  attestation), so base-image pulls are platform-unambiguous by construction. Direct
+  docker.io pulls work from this sandbox.
+- **COI egress filter is harsher than assumed** (probe from the `coi-pulsar` sandbox,
+  2026-09-23): RFC1918, `100.64.0.0/10`, **and** `169.254.0.0/16` all get an instant
+  TCP-RST reject; a public IP connects; a public bogon (TEST-NET) drops silently.
+  (100.64's instant reject is explained by NM's shared-mode chain, not coi — see the
+  laptop-ruleset bullet below.) `authorize_sandbox_target` only ssh-copy-ids; it creates
+  no network path.
+- **Laptop ruleset read resolves open item 1 — NO by default** (2026-09-23; the
+  operator pasted `sudo nft list ruleset` from the laptop, which hosts this very
+  sandbox — probe counters match). Findings: (a) coi restricted mode keeps an explicit
+  `ip saddr <sandbox> ip daddr 169.254.0.0/16 reject` (besides RFC1918) in the iptables
+  FORWARD chain, regenerated per session; (b) today's 100.64 path never carried
+  sandbox-originated deploys either — NetworkManager's shared-mode forward chain
+  (`nm-sh-fw-enp5s0`) rejects NEW forwarded connections out the cable NIC, and its
+  reject counter contains exactly this sandbox's three probe SYNs (the 47k established
+  packets are host-originated; host traffic bypasses FORWARD); (c) a per-target
+  accept+masquerade pair for `10.0.0.1:22` exists but sits AFTER the range rejects with
+  zero counters (shadowed) — whether coi generates it from `ssh_targets` and mis-orders
+  it, or it was hand-added, is unverified; (d) masquerade is mandatory for any
+  sandbox→box flow (the box has no route back to `10.250.250.0/24`). Consequence:
+  **deploys default to the host shell** (zero new plumbing — host APIPA + host OUTPUT
+  path suffice); sandbox→box = documented one-time rule pair (§7b).
+- **Host APIPA timing resolved by docs**: NetworkManager's default DHCP timeout is 45s
+  (NM reference manual + RHEL docs); a `method=auto` ethernet connection falls back to
+  a `169.254.x.y/16` address when DHCP fails (classic NM behavior; explicit
+  `ipv4.link-local=fallback` enum exists since NM 1.52). The ~60s expectation and the
+  installer's ~75s probe window are correctly sized. Factory-box half: JP6/Ubuntu 22.04
+  on the ZED Box is NetworkManager-managed and expected to APIPA on DHCP failure, but
+  Stereolabs docs don't state it (default creds `user`/`admin` confirmed); residual
+  bench observation, cheap to watch during first-contact testing.
+- **Offline camera open on SDK 5.2 is NOT safe stock** — and the fix is seeding, not
+  firmware. SDK 5.3 release notes: (a) EEPROM-backed calibration is a 5.3 feature, and
+  reading it requires cameras produced after May 2026 (except ZED Mini); (b) 5.3 fixed a
+  GMSL bug where ZED X with no local calibration file and no internet failed
+  `open()` with `CALIBRATION_FILE_NOT_AVAILABLE` instead of falling back to EEPROM —
+  our 5.2 runtime image has exactly that bug's preconditions. Calibration source
+  priority: local `settings/SN*.conf` file → EEPROM → download. Deterministic offline
+  design: the host fetches the factory calibration once from
+  `https://calib.stereolabs.com/?SN=<serial>` (tiny conf) and ships it to the box,
+  mounted at `/usr/local/zed/settings/` (the pattern Stereolabs' own docker guide
+  recommends). `ZED_SDK_DISABLE_DOWNLOAD=1` (env var present in `libsl_zed.so`) then
+  hard-disables any download attempt. The two ZEDX `.isp` sensor profiles
+  (`zedx_ar0234.isp`, `zedx_imx678.isp`, ~200 KB total, absent from the runtime image,
+  present in devel) should ship the same way — the names are compiled into
+  `libsl_zed.so`, and shipping them removes the download question. AI-model downloads
+  only trigger on NEURAL depth modes — depth NONE (the standing constraint) keeps the
+  offline box clean.
+- **Save→load arm64 assertion effectively resolved**: in-sandbox `docker save`→`rmi`→
+  `docker load` of the arm64 ZED image round-trips with `Architecture=arm64` intact
+  (docker 29). Docs: `docker load` restores images+tags; `pull --platform` on the
+  classic store is honored (the sandbox platform deception is containerd-store
+  specific). New P3 requirement discovered: pulling our arm64-only tree-SHA tags on the
+  amd64 host errors without `--platform linux/arm64` (or a digest pin) — default-mode
+  image acquisition must use one of the two. Nuance: a digest-ref-only image loses
+  `RepoDigests` metadata through save/load; the tree-SHA *tagged* flow is unaffected.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
-1. Operator-host sandbox → `169.254.0.1` reachability (COI filter + forward + masquerade
-   out the cable NIC). **Gates P2.** If it fails: fallback = documented one-time manual NM
-   profile on the host (option 2 from the design session), never built into the installer.
+1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
+   (laptop ruleset read, verified list): coi explicitly rejects sandbox→link-local per
+   session, and the old 100.64 path never carried sandbox deploys either (nm-shared
+   FORWARD blocks new forwarded connections). Deploy path = host shell, zero plumbing;
+   sandbox→box = one-time rule pair (§7b). The item-1 manual-NM-profile fallback is not
+   needed for host deploys — host APIPA requires no profile at all.
 2. Host APIPA timing: unconfigured port + cable + box → address assigned within ~60s;
    factory box likewise falls back to APIPA on DHCP failure. **Gates P2.**
-3. Firmware bin presence: `docker run --rm --platform linux/arm64 <zed-base> ls -R
-   /usr/local/zed/firmware` (pull via the mirror ref from `.env.lock`). If the lean
-   `5.2-runtime-jetson-jp6.1.0` image lacks it, mirror the `5.2-tools-devel-jetson-jp6.1.0`
-   tag the same way (new `.env.lock` entry + `x-base-images` row so mirror-images carries
-   it; same legal footing). Also determine whether `Camera.open()` auto-applies a bin found
-   in that directory, or whether `ZED_Explorer --updatefw` must run (via an on-box
-   `docker run` of the tools image). **Gates P4.**
+   Status: host half resolved by docs (45s DHCP timeout + link-local fallback). Factory
+   box half: expected yes (NM on JP6), unconfirmed — observe during first-contact testing.
+3. ~~Firmware bin presence~~ **Resolved — no ZED X firmware exists** (see verified list);
+        nothing to extract or flash. What remains of this item is the offline-open half,
+        which is open item 4 unchanged.
 4. Offline open on SDK 5.2 + ZED X: `Camera.open()` succeeds with no default route,
    calibration served from EEPROM, no download attempted. **Gates P4.**
+   Status: mechanism resolved by research (verified list) — stock 5.2 fails offline; with
+   a seeded `settings/SN*.conf` + the two `.isp` files + `ZED_SDK_DISABLE_DOWNLOAD=1` it
+   is expected to pass on any SDK/camera vintage. Bench item reduces to: confirm open()
+   offline with seeded artifacts (one container run, no install).
 5. `docker save` of a first-party tree-SHA tag on the host → `docker load` on box →
    `docker image inspect` reports `arm64` (single-platform manifest assertion). **Gates P3
    sign-off.**
+   Status: resolved by docs + in-sandbox round trip (verified list); box-side load is
+   native-arch and trivial — observe as a formality during P6. Note the new P3
+   requirement: host pulls of arm64-only tags need `--platform linux/arm64` or digest
+   pins.
 
 ## 5. Phases
 
 ### P1 — bench verification gate (no repo commits; record results in §4)
 
-- [ ] 1.1 Items 1–2 above (networking spine). Fallback if 1 fails: option-2 manual
+- [x] 1.1 Items 1–2 above (networking spine). Fallback if 1 fails: option-2 manual
       profile documented in `scripts/AGENTS.md`, spine degrades to "static profile owned
       by operator", P2 adjusted accordingly.
-- [ ] 1.2 Items 3–4 (firmware + offline open).
-- [ ] 1.3 Item 5 plus: resolve per-arch arm64 manifest digests for loki/alloy
+      Resolved: item 1 — sandbox→box is NO by default; deploys run from the host shell,
+      sandbox path = §7 rule pair, no NM profile needed anywhere (option-2 fallback moot,
+      §8). Item 2 — host half resolved by docs (45s DHCP timeout + APIPA fallback); the
+      factory-box APIPA observation is re-homed to first contact at P6.1 and is
+      non-blocking: if a factory box does NOT self-assign, virgin-box discovery gets a
+      documented one-time manual step instead of the ARP scan. P2 proceeds.
+- [x] 1.2 Items 3–4 (firmware + offline open).
+      Resolved: item 3 — no ZED X firmware exists (§4); item 4 — risk retired by the
+      seeding design (calibration source #1 + `ZED_SDK_DISABLE_DOWNLOAD`); the seeded
+      offline-open confirm is re-homed to P6.
+- [x] 1.3 Item 5 plus: resolve per-arch arm64 manifest digests for loki/alloy
       (`docker buildx imagetools inspect <mirror-ref>` → `linux/arm64` manifest digest)
       and have the new `.env.lock` values ready.
+      Resolved: digests recorded in §4 (loki `4c28f6be…`, alloy `08b4fe15…`); item 5
+      resolved by docs + in-sandbox round trip — the box-side observation rides P6.
 
 ### P2 — networking rework (code commit: `Rework install networking to deterministic link-local`)
 
@@ -159,34 +254,41 @@ warmup can't download anything even if the SDK tries — that is the point.
 - [ ] 3.1 `.env.lock`: `LOKI_DIGEST`/`ALLOY_DIGEST` become the per-arch arm64 manifest
       digests from 1.3. Update the lock-update procedure note (scripts/AGENTS.md, P5).
 - [ ] 3.2 Default mode `_acquire_images`: host pulls the three first-party tree-SHA tags
-      + two stock per-arch-digest refs from the mirror, then
-      `docker save <all five> | gzip | ssh … 'gunzip | docker load'` (one tar, gzip —
-      guaranteed on the box). Compose `.env` image refs unchanged (same tags/digests).
+      + two stock per-arch-digest refs from the mirror (all five with
+      `--platform linux/arm64` or as digest refs — plain tag pulls error on the amd64
+      host), then `docker save <all five> | gzip | ssh … 'gunzip | docker load'` (one
+      tar, gzip — guaranteed on the box). Compose `.env` image refs unchanged (same
+      tags/digests).
 - [ ] 3.3 `--build` branch: unchanged except the registry address is the host's current
       APIPA address on the cable NIC (discover at run time), and the insecure-registries
       diff/rewrite already handles churn-on-change.
 - [ ] 3.4 Delete `_pull_image_on_box` (no box-side pulls in default mode).
 
-### P4 — firmware + offline warmup (code commit: `Pre-seed ZED firmware and verify camera open offline`)
+### P4 — SDK artifact seeding + offline warmup (code commit: `Seed calibration and ISP profiles for offline camera open`)
 
-- [ ] 4.1 Per 1.2 results: extract firmware bin(s) on the host from the (already-mirrored)
-      Stereolabs image — `docker create` + `docker cp /usr/local/zed/firmware` — and scp
-      to the box path the SDK reads (likely needs the `compose.rig.yml` bind mount added).
-- [ ] 4.2 If `ZED_Explorer --updatefw` is required (1.2): on-box
-      `docker run --rm <tools-image> ZED_Explorer --updatefw <bin>` with GMSL device
-      access, once at install, idempotent (SDK reports current).
-- [ ] 4.3 Warmup step stays but is now an offline assertion: camera open must succeed with
-      no default route. Failure is loud, names the missing artifact (firmware/calibration),
-      and blocks install completion (no silent deferral to first capture). Non-fatal
-      degradation only if 1.2 surfaced a legitimate offline-blocking case — then the error
-      message carries the exact SDK demand and the bench procedure.
+- [ ] 4.1 Bake the ZEDX `.isp` sensor profiles into the service image: add the
+      `5.2-tools-devel-jetson-jp6.1.0` tag to `x-base-images` (new `.env.lock` key
+      `ZED_DEVEL_DIGEST`, per-arch arm64 manifest digest — mirror-images then carries
+      it; same distribution posture as the SDK already inside our public images) and
+      multi-stage `COPY --from=<devel-stage> /usr/local/zed/firmware/ZEDX/` into the
+      zed-capture image at the same path.
+- [ ] 4.2 Seed the per-camera calibration at install: read the camera serial on the box
+      (physical label or an on-box diagnostic run — settle at implementation), fetch
+      `https://calib.stereolabs.com/?SN=<serial>` on the host (which has internet),
+      scp beside the other seeded files; `compose.rig.yml` bind-mounts it at
+      `/usr/local/zed/settings/` and sets `ZED_SDK_DISABLE_DOWNLOAD=1` in the zed
+      service environment. No SDK 5.3 bump and no firmware steps — no ZED X firmware
+      exists, and the seeded file is calibration source #1 on every SDK version (§4).
+- [ ] 4.3 Warmup step stays as an offline assertion: camera open must succeed with no
+      default route. Failure is loud, names the missing artifact (calibration), and
+      blocks install completion (no silent deferral to first capture).
 
 ### P5 — docs (prose commits: `Update agent docs and README for offline link-local installs`)
 
 - [ ] 5.1 `scripts/AGENTS.md`: rewrite image-acquisition + constraints sections —
       delete host-networking-ownership and RFC 6598 lines; add zero-host-config link-local
-      spine, APIPA timing, discovery flow, per-arch-digest lock procedure, firmware
-      extraction; sudoers-dormancy / USB device-mode / control-master lines stay.
+      spine, APIPA timing, discovery flow, per-arch-digest lock procedure, calibration
+      seeding; sudoers-dormancy / USB device-mode / control-master lines stay.
 - [ ] 5.2 `docker/zed-capture/AGENTS.md`: networking section rewrite (two paths:
       laptop link-local deploy + AOA; delete "outbound internet" claims, the RFC 6598
       paragraph, and the `--host` ghost). While in the file: fix the restart-policy drift
@@ -201,11 +303,15 @@ warmup can't download anything even if the SDK tries — that is the point.
 
 - [ ] 6.1 Fresh-virgin-box install in default mode; then `--build` install. Checklist
       mirrors the extraction plan's gate: stack healthy, box-Loki queryable on-box, phone
-      AOA link + log drain functional, warmup passed offline, box has no default route
-      (`ip route` shows only `169.254.0.0/16 dev …`).
+      AOA link + log drain functional, warmup passed offline (this is the seeded
+      offline-open confirm from 1.2), box has no default route (`ip route` shows only
+      `169.254.0.0/16 dev …`). First contact doubles as the factory-box APIPA
+      observation from 1.1: note whether the ARP-scan discovery finds the virgin box.
 - [ ] 6.2 Migration of the existing box + host per §7 (one time).
 - [ ] 6.3 Operator: update pulsar config `ssh_targets.zed-box.host` → `169.254.0.1`,
-      re-run `uv run sandbox authorize zed-box`, confirm `ssh zed-box` from a sandbox.
+      re-run `uv run sandbox authorize zed-box`, confirm `ssh zed-box` from a sandbox —
+      via the §7 rule pair if the coi-generated target rules don't materialize or
+      arrive shadowed. Deploys themselves run from the host shell (§9).
 
 ## 6. Hazards
 
@@ -250,10 +356,33 @@ sudo nmcli con delete zedbox-migrate
 
 Then the new installer reaches the box at `169.254.0.1` forever.
 
+### Sandbox→box plumbing (operator, once per host, only if agent-driven deploys are wanted)
+
+```bash
+sudo iptables -I FORWARD 1 -s 10.250.250.0/24 -d 169.254.0.1 -j ACCEPT
+sudo iptables -I FORWARD 2 -d 10.250.250.0/24 -s 169.254.0.1 -m conntrack \
+  --ctstate ESTABLISHED,RELATED -j ACCEPT
+sudo iptables -t nat -I POSTROUTING 1 -s 10.250.250.0/24 -d 169.254.0.1 -j MASQUERADE
+```
+
+Masquerade is mandatory — the box has no route back to the sandbox subnet, so replies
+must return to the host's cable-NIC APIPA address. Head insertion keeps the rules above
+coi's per-session range rejects; coi regenerates only its own per-sandbox rules, but
+probe from a sandbox after the next session starts to confirm nothing reordered them.
+Optionally try the ssh_targets route first (set `zed-box.host` to `169.254.0.1`, start a
+new sandbox session, `uv run sandbox authorize zed-box`): if the installed coi version
+generates ordered per-target rules, the manual pair is unnecessary — the shadowed
+`10.0.0.1:22` pair in the 2026-09-23 dump suggests it does not (or mis-orders them;
+worth a coi bug report either way — see §8).
+
 ## 8. Follow-ups deliberately not built
 
 - `--host <target>` shared-LAN override (doc ghost removed in P5; build only if needed).
-- Option-2 manual NM profile fallback (exists only if P1 item 1 fails).
+- Option-2 manual NM profile fallback: moot — item 1 resolved without it (host deploys
+  need no profile; the sandbox path uses the §7 rule pair).
+- Report the shadowed per-target rules to coi: the `10.0.0.1:22` accept+masq pair sits
+  after the per-sandbox range rejects and can never match. If coi generates these from
+  `ssh_targets`, target allows must be inserted above the rejects.
 - Pulsar `messages.py` ssh-targets example still says `100.64.0.1` — cross-repo, operator
   touch-up whenever convenient.
 
@@ -268,5 +397,17 @@ Then the new installer reaches the box at `169.254.0.1` forever.
 - Per-arch digests over `--platform` after the containerd-store platform surprise.
 - Cleanup is manual-by-ruling: installer code that removes installer-created state would
   outlive its purpose.
-- `plan.md` tracked on the branch (operator ruling; differs from the extraction repo's
+- **`plan.md` tracked on the branch** (operator ruling; differs from the extraction repo's
   untracked convention). Delete when the last checkbox lands.
+- **Deploy origin = host shell by default** (resolved 2026-09-23 by the laptop ruleset
+  read): coi restricted mode rejects sandbox→link-local per session, and the old 100.64
+  path never carried sandbox deploys anyway (nm-shared FORWARD blocks new forwarded
+  connections). Sandbox→box stays available via the documented §7 rule pair — never
+  built into the installer.
+- **P4 redesigned from firmware to seeding** (operator-approved 2026-09-23, after
+  research): no ZED X firmware exists (Stereolabs-confirmed — no fw updates for ZED X /
+  X Mini / X One). Offline camera open is enabled by baking the two ZEDX `.isp` profiles
+  into the service image (devel build stage) and seeding the per-SN factory calibration
+  conf fetched once on the host. SDK stays 5.2: the 5.3 EEPROM path needs post-May-2026
+  cameras or a one-time online `--dc` session on the box, and a bump drags base-image,
+  pyzed, and actor-drift cost — a separate decision with its own bench validation.
