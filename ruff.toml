@@ -2,4 +2,5 @@ extend = "ruff.base.toml"
 
 extend-exclude = [
     "packages/generated",
+    "typings",
 ]
