@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Preflight
+        run: uvx --from python-devkit==0.1.8 preflight-python
+
+      - name: Codegen staleness
+        run: |
+          uv run --no-sync openapi-client-codegen --config build/openapi-projects.json
+          git diff --exit-code -- packages/generated docker/zed-capture/openapi.json
+
+  mirror:
+    needs: [check]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    name: mirror-images
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Login to ghcr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Populate image mirror
+        run: uvx --from release-devkit==0.1.7 mirror-images --config build/publish-config.json
+
+  unity:
+    needs: [check]
+    permissions:
+      contents: read
+      packages: write
+    uses: outernet-foundation/unity-devkit/.github/workflows/unity-build.yml@cfd487e0e19b3d98046a2680a210137ec0d32832
+    with:
+      runner-labels: '["self-hosted","unity"]'
+      build-env: CONFIG_TYPE=default
+    secrets: inherit
+
+  build-zed:
+    needs: [check, mirror]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    name: build-zed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Sync venv
+        run: uv sync
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Create builder and login
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker buildx create --use --driver docker-container
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build
+        run: uv run --no-sync build --mode ci --gpu none --bake-file compose.zed.bake.yml --targets zed-capture --targets aoa-bridge --targets aoa-gateway
+
+      - name: Upload .env.lock
+        uses: actions/upload-artifact@v6
+        with:
+          name: env-lock-zed
+          path: .env.lock
+          include-hidden-files: true
+
+  ensure-release-pr:
+    needs: [unity, build-zed]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.PLACEFRAME_CI_APP_ID }}
+          private-key: ${{ secrets.PLACEFRAME_CI_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Ensure release PR exists
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: uvx --from release-devkit==0.1.7 ensure-release-pr

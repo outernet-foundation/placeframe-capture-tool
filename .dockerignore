@@ -1,0 +1,6 @@
+# Ignore everything, then allowlist only what Docker builds need.
+# This file is the single source of truth for the CONTEXT_SHA image tag.
+# Adding a COPY for a path not listed here will fail the build loudly.
+*
+!docker/
+!compose.zed.bake.yml

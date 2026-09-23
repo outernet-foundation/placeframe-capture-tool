@@ -1,0 +1,20 @@
+{
+  "packages": [
+    {
+      "name": "placeframe-zed-capture-client",
+      "path": "packages/generated/csharp/zed-capture-client/src/PlaceframeZedCaptureClient",
+      "feeds": {"nuget": "PlaceframeZedCaptureClient", "npm": "org.outernet.placeframe.zedcaptureclient"}
+    }
+  ],
+  "apps": [
+    {
+      "name": "CaptureTool",
+      "path": "apps/CaptureTool",
+      "tag_prefix": "capture-tool",
+      "display_name": "Capture Tool"
+    }
+  ],
+  "compose_files": ["compose.zed.bake.yml"],
+  "ci_workflow": "ci.yml",
+  "mirror_prefix": "ghcr.io/outernet-foundation/mirror"
+}
