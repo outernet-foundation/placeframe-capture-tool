@@ -7,8 +7,10 @@ dependencies = []
 [dependency-groups]
 dev = [
     "scripts",
-    "basedpyright>=1.39.10",
-    "ruff>=0.14.11",
+    # Bounded to placeframe's locked linter versions: the moved zed tree is
+    # lint/type-clean against them, newer majors add rules it fails.
+    "basedpyright>=1.39.10,<1.40",
+    "ruff>=0.14.11,<0.15",
     "pytest>=8.0.0",
     "docker-devkit>=0.1.0",
     "unity-devkit>=0.1.0",
