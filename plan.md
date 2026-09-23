@@ -251,18 +251,18 @@ warmup can't download anything even if the SDK tries — that is the point.
 
 ### P3 — image acquisition (code commit: `Ship box images from the host instead of the box pulling`)
 
-- [ ] 3.1 `.env.lock`: `LOKI_DIGEST`/`ALLOY_DIGEST` become the per-arch arm64 manifest
+- [x] 3.1 `.env.lock`: `LOKI_DIGEST`/`ALLOY_DIGEST` become the per-arch arm64 manifest
       digests from 1.3. Update the lock-update procedure note (scripts/AGENTS.md, P5).
-- [ ] 3.2 Default mode `_acquire_images`: host pulls the three first-party tree-SHA tags
+- [x] 3.2 Default mode `_acquire_images`: host pulls the three first-party tree-SHA tags
       + two stock per-arch-digest refs from the mirror (all five with
       `--platform linux/arm64` or as digest refs — plain tag pulls error on the amd64
       host), then `docker save <all five> | gzip | ssh … 'gunzip | docker load'` (one
       tar, gzip — guaranteed on the box). Compose `.env` image refs unchanged (same
       tags/digests).
-- [ ] 3.3 `--build` branch: unchanged except the registry address is the host's current
-      APIPA address on the cable NIC (discover at run time), and the insecure-registries
-      diff/rewrite already handles churn-on-change.
-- [ ] 3.4 Delete `_pull_image_on_box` (no box-side pulls in default mode).
+- [x] 3.3 `--build` branch: unchanged except the registry address is the host's current
+      APIPA address on the cable NIC (discover at run time), and the
+      insecure-registries diff/rewrite already handles churn-on-change.
+- [x] 3.4 Delete `_pull_image_on_box` (no box-side pulls in default mode).
 
 ### P4 — SDK artifact seeding + offline warmup (code commit: `Seed calibration and ISP profiles for offline camera open`)
 
