@@ -26,6 +26,33 @@ Box pull from the host-local registry failed for {image}. Check that the
 registry container is running on the host and that the box's
 insecure-registries entry matches the host's current link-local address."""
 
+BOX_HAS_DEFAULT_ROUTE = """\
+The box has a default route — the offline install posture is broken, and
+nothing in install-zed adds one. Remove it on the box
+(`nmcli con mod <connection> ipv4.gateway ''`) and re-run."""
+
+CAMERA_SERIAL_PROMPT = "ZED camera serial number (numeric, printed on the camera's label)"
+
+CAMERA_SERIAL_INVALID = """\
+The camera serial is the numeric string printed on the camera's label;
+got {serial!r}."""
+
+CALIBRATION_DOWNLOAD_FAILED = """\
+Fetching the factory calibration from calib.stereolabs.com failed for SN
+{serial}. Check this host's internet, then re-run install-zed."""
+
+CALIBRATION_PLACEHOLDER = """\
+calib.stereolabs.com returned a placeholder (all-zero) calibration for SN
+{serial}: the serial does not match a manufactured camera. Check it against
+the camera's label and re-run install-zed."""
+
+CAMERA_OPEN_FAILED = """\
+Camera.open() failed with the box offline. The seeded calibration is the
+usual missing artifact: check that the serial entered at the prompt matches
+the camera's label and that /usr/local/zed/settings/SN*.conf exists on the
+box. The install stops here on purpose — a rig that cannot open its camera
+offline is not installed."""
+
 BOX_LOGIN_PROMPT = "box login password (installs the install-zed SSH key and the passwordless sudo rule)"
 
 FACTORY_LOGIN_REJECTED = """\

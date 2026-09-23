@@ -1,3 +1,4 @@
+import configparser
 import json
 import platform
 import shlex
@@ -25,6 +26,7 @@ from .constants import (
     BOX_IP,
     BOX_REACHABLE_PROBE_SECONDS,
     BOX_SSH_TARGET,
+    CALIBRATION_DOWNLOAD_URL,
     COMPOSE_SOURCE,
     DOCKER_DEB_BASE,
     DOCKER_DEBS,
@@ -48,13 +50,20 @@ from .constants import (
     SYSTEMD_UNIT_SOURCE,
     WAIT_FOR_ZED_CAMERA_SOURCE,
     ZED_SERVICES,
+    ZED_SETTINGS_DIR,
     ZED_STOCK_IMAGES,
 )
 from .messages import (
     ARM64_EMULATION_MISSING,
+    BOX_HAS_DEFAULT_ROUTE,
     BOX_ID_UNRESOLVABLE,
     BOX_LOGIN_PROMPT,
     BOX_STATIC_FLIP_TIMEOUT,
+    CALIBRATION_DOWNLOAD_FAILED,
+    CALIBRATION_PLACEHOLDER,
+    CAMERA_OPEN_FAILED,
+    CAMERA_SERIAL_INVALID,
+    CAMERA_SERIAL_PROMPT,
     FACTORY_LOGIN_REJECTED,
     IMAGE_PULL_FAILED,
     IMAGE_UNRESOLVED_ON_BOX,
@@ -205,6 +214,10 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         logger.info("enabling_camera_daemons")
         ssh_run("sudo systemctl enable --now nvargus-daemon zed_x_daemon")
 
+        # Seed the per-camera factory calibration before the stack starts:
+        # the compose bind mount at /usr/local/zed/settings must carry it.
+        _seed_camera_calibration()
+
         # Direct compose (not `systemctl restart placeframe-zed.service`) so the
         # install can succeed on a box without the camera attached — the unit's
         # wait_for_zed_camera ExecStartPre would otherwise time out.
@@ -212,13 +225,28 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         ssh_run(f"sudo docker compose -f {REMOTE_COMPOSE} down --remove-orphans")
         ssh_run(f"sudo docker compose -f {REMOTE_COMPOSE} up -d")
 
-        # Trigger the ZED SDK's first-open firmware download so a real capture doesn't stall on it.
+        # Tripwire: nothing in install-zed adds a default route, and the
+        # camera-open assertion below only proves the offline posture if the
+        # box actually is offline.
+        if ssh_output("ip route show default").strip():
+            typer.echo(BOX_HAS_DEFAULT_ROUTE, err=True)
+            raise SystemExit(1)
+
+        # Offline camera-open assertion. With the seeded calibration, the
+        # baked .isp profiles, and ZED_SDK_DISABLE_DOWNLOAD there is no
+        # download path left, so a successful open proves the offline posture
+        # end-to-end. Failure is fatal and names the artifact instead of
+        # deferring a broken rig to first capture.
         if not build:
-            logger.info("warming_zed_sdk")
-            ssh_run(
-                f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
-                '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); c.open(p); c.close()"'
-            )
+            logger.info("verifying_offline_camera_open")
+            try:
+                ssh_run(
+                    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
+                    '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); c.open(p); c.close()"'
+                )
+            except CalledProcessError:
+                typer.echo(CAMERA_OPEN_FAILED, err=True)
+                raise SystemExit(1)
 
         logger.info("install_done")
     finally:
@@ -631,3 +659,50 @@ def _pull_image_from_registry(image: str) -> None:
     except CalledProcessError:
         typer.echo(REGISTRY_PULL_FAILED.format(image=image), err=True)
         raise SystemExit(1)
+
+
+def _seed_camera_calibration() -> None:
+    # The box is offline forever, and SDK 5.2 GMSL cameras fail open() with
+    # CALIBRATION_FILE_NOT_AVAILABLE unless a local calibration exists — the
+    # EEPROM fallback is a 5.3 feature on post-May-2026 cameras. A local
+    # settings file is calibration source #1 on every SDK version, so the
+    # host (which has internet) fetches the per-SN factory conf once and
+    # seeds it into the box path compose bind-mounts at
+    # /usr/local/zed/settings. The serial comes from the camera's physical
+    # label: every on-box read path goes through open(), which is exactly
+    # the call that fails without this file.
+    if ssh_check(f"ls {ZED_SETTINGS_DIR}/SN*.conf"):
+        logger.info("camera_calibration_already_seeded")
+        return
+
+    serial = typer.prompt(CAMERA_SERIAL_PROMPT).strip()
+    if not serial.isdigit():
+        typer.echo(CAMERA_SERIAL_INVALID.format(serial=serial), err=True)
+        raise SystemExit(1)
+
+    with tempfile.TemporaryDirectory() as temp_directory:
+        calibration_path = Path(temp_directory) / f"SN{serial}.conf"
+        try:
+            bash(f"curl -fsSL -o {calibration_path} {CALIBRATION_DOWNLOAD_URL.format(serial=serial)}")
+        except CalledProcessError:
+            typer.echo(CALIBRATION_DOWNLOAD_FAILED.format(serial=serial), err=True)
+            raise SystemExit(1)
+
+        if not _calibration_is_real(calibration_path):
+            typer.echo(CALIBRATION_PLACEHOLDER.format(serial=serial), err=True)
+            raise SystemExit(1)
+
+        bash(f"scp {SSH_MUX} {calibration_path} {BOX_SSH_TARGET}:/tmp/")
+
+    ssh_run(f"sudo install -D -m 0644 -o root -g root /tmp/SN{serial}.conf {ZED_SETTINGS_DIR}/SN{serial}.conf")
+    ssh_run(f"rm /tmp/SN{serial}.conf")
+    logger.info("camera_calibration_seeded", extra={"serial": serial})
+
+
+def _calibration_is_real(calibration_path: Path) -> bool:
+    # calib.stereolabs.com answers an unknown serial with HTTP 200 and an
+    # all-zero placeholder conf, so a non-zero focal length somewhere in the
+    # file is the signal that the serial matched a real camera.
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(calibration_path)
+    return any(parser.has_option(section, "fx") and parser.getint(section, "fx") > 0 for section in parser.sections())

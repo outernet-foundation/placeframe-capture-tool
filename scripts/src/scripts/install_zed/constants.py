@@ -58,6 +58,12 @@ REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
 REMOTE_LOKI_CONFIG = f"{REMOTE_DIR}/box.yaml"
 REMOTE_ALLOY_CONFIG = f"{REMOTE_DIR}/config.alloy"
+# Box-side source of the compose bind mount into the container's
+# /usr/local/zed/settings — where the seeded per-camera calibration lives.
+ZED_SETTINGS_DIR = "/usr/local/zed/settings"
+# Stereolabs' factory-calibration service; the only artifact install-zed
+# ever fetches from stereolabs.com, fetched once on the host at seed time.
+CALIBRATION_DOWNLOAD_URL = "https://calib.stereolabs.com/?SN={serial}"
 SSH_SOCKET = "/tmp/install-zed-ssh-%C"
 SSH_MUX = f"-o ControlMaster=auto -o ControlPath={SSH_SOCKET} -o ControlPersist=120"
 SSH_KEY = Path.home() / ".ssh" / "id_ed25519"

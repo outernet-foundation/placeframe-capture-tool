@@ -1,9 +1,16 @@
 ARG ZED_BASE_IMAGE
+ARG ZED_DEVEL_IMAGE
 ARG UV_BASE_IMAGE
 FROM ${UV_BASE_IMAGE} AS uv
+FROM ${ZED_DEVEL_IMAGE} AS zed-firmware
 FROM ${ZED_BASE_IMAGE}
 
 COPY --from=uv /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
+
+# The runtime base carries no firmware files at all; the two ZEDX .isp sensor
+# profiles ride over from the devel image so an offline camera open never
+# needs the SDK's download path.
+COPY --from=zed-firmware /usr/local/zed/firmware/ZEDX/ /usr/local/zed/firmware/ZEDX/
 
 WORKDIR /app/zed
 
