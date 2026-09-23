@@ -294,19 +294,23 @@ warmup can't download anything even if the SDK tries — that is the point.
 
 ### P5 — docs (prose commits: `Update agent docs and README for offline link-local installs`)
 
-- [ ] 5.1 `scripts/AGENTS.md`: rewrite image-acquisition + constraints sections —
+- [x] 5.1 `scripts/AGENTS.md`: rewrite image-acquisition + constraints sections —
       delete host-networking-ownership and RFC 6598 lines; add zero-host-config link-local
       spine, APIPA timing, discovery flow, per-arch-digest lock procedure, calibration
       seeding; sudoers-dormancy / USB device-mode / control-master lines stay.
-- [ ] 5.2 `docker/zed-capture/AGENTS.md`: networking section rewrite (two paths:
+- [x] 5.2 `docker/zed-capture/AGENTS.md`: networking section rewrite (two paths:
       laptop link-local deploy + AOA; delete "outbound internet" claims, the RFC 6598
       paragraph, and the `--host` ghost). While in the file: fix the restart-policy drift
       (doc says `on-failure`; compose.rig.yml says `restart: "no"` with the newer
       dockerd-auto-start rationale — doc updates to match code).
-- [ ] 5.3 `README.md:22` "the install tooling configures the link" → the tooling
+- [x] 5.3 `README.md:22` "the install tooling configures the link" → the tooling
       configures nothing on the host; plug in a cable. Root `AGENTS.md`: adjust the
       `install-zed` line if it implies host networking.
-- [ ] 5.4 Record P1 bench results (§4) as resolved.
+      Resolved: root `AGENTS.md`'s install-zed line makes no host-networking claim —
+      no change needed there. `docker/aoa-bridge/AGENTS.md` also carried a stale
+      `100.64.0.1` ssh example and a local-registry-only shipping claim — both fixed
+      in the P5 commit.
+- [x] 5.4 Record P1 bench results (§4) as resolved.
 
 ### P6 — bench validation + migration (no repo commits beyond checkbox flips)
 
