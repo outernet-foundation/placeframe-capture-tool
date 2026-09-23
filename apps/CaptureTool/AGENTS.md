@@ -47,20 +47,21 @@ The tag whitelist lives in `LogcatRelay.TagFilters`; extend it (or relax to `*:V
 
 ## Reading phone-side logs from Loki
 
-Capture Tool pushes Unity logs directly to Loki via the gateway (`/loki/api/v1/push`, see `docker/gateway/entrypoint.sh`) with client-side label `app=capture-tool` set in `AuthManager.cs:EnableLoki(...)`. Loki auto-derives `service_name=capture-tool` from the `app` label, so either label works for queries. Quicker than swapping to the debug cable when the phone is plugged into the ZED.
+Capture Tool pushes Unity logs directly to the backend Loki's push endpoint (`{apiUrl}/loki/api/v1/push`, terminated by placeframe's server-side gateway — cross-repo) with client-side label `app=capture-tool` set in `AuthManager.cs:EnableLoki(...)`. Loki auto-derives `service_name=capture-tool` from the `app` label, so either label works for queries. Quicker than swapping to the debug cable when the phone is plugged into the ZED.
 
-Use `uv run loki-query` from the slot — it handles URL encoding and prints one-line summaries (timestamp, level, log group, message, exception chain). Single-quote the LogQL so the shell doesn't expand `{}` or `|`:
+Read them from the backend (placeframe's Grafana, or its `loki-query` tool from a placeframe checkout — this repo has no server-side Loki). Useful LogQL shapes, single-quoted so the shell doesn't expand `{}` or `|`:
 
 ```
-uv run loki-query '{app="capture-tool"} | json | logGroup="Android"'
-uv run loki-query '{app="capture-tool"} | json | logGroup="Zed"' --since 5m
-uv run loki-query '{app="capture-tool"} | json | logGroup="Android" | Tag="UsbHostManager"' --limit 200
-uv run loki-query '{app="capture-tool"}' --raw       # full Loki JSON, for ad-hoc jq
+'{app="capture-tool"} | json | logGroup="Android"'
+'{app="capture-tool"} | json | logGroup="Zed"'
+'{app="capture-tool"} | json | logGroup="Android" | Tag="UsbHostManager"'
 ```
 
-Default range is 30m, default limit 50, newest first. Pass `--raw` when you need the full JSON instead of the formatted summaries.
+Prefer the structured `| json | <field>="<value>"` form over `|= "<substring>"` substring filters — fewer escape-quoting traps. If a fresh query returns zero entries, wait ~3s and retry: `LokiSink` batches every ~2s when idle, so very recent emissions may not be flushed yet. The relay only works while the backend (placeframe's server stack) is up and the phone has wifi (the relay POST goes over wifi, not USB-ethernet). For ZED-box-side logs see `docker/zed-capture/AGENTS.md`.
 
-Prefer the structured `| json | <field>="<value>"` form over `|= "<substring>"` substring filters — fewer escape-quoting traps. If a fresh query returns zero entries, wait ~3s and retry: `LokiSink` batches every ~2s when idle, so very recent emissions may not be flushed yet. The relay only works while the backend is up (`uv run up`) and the phone has wifi (the relay POST goes over wifi, not USB-ethernet). For ZED-box-side logs see `docker/zed-capture/CLAUDE.md`.
+## NuGet packages (`Assets/packages.config`)
+
+NuGetForUnity's CLI (`dotnet nugetforunity restore`, what CI and `compile-unity` run) only downloads packages already listed — it does **not** resolve transitive dependencies; resolution happens only in the editor UI. The current `packages.config` is transitively complete. Any future package addition must have its .NET Standard 2.0 transitive dependencies added manually (check the dependency list on nuget.org; skip low-level BCL packages Unity's runtime already provides). Missing transitives compile fine locally in the editor but fail in CI where only `restore` runs.
 
 ## Slot preconditions for on-device work
 
