@@ -32,12 +32,15 @@ Worktree: `.worktrees/zed-install-tarball` (branch `zed-install-tarball`, off `d
 - **Cable-only topology.** The `--host` shared-LAN override that `zed-capture/AGENTS.md`
   documents never existed; the doc gets fixed, the flag is a follow-up (§8).
 - **Networking spine = deterministic link-local.** Box holds static `169.254.0.1/16`
-  (no gateway, no DNS). Host side is zero-config: an unconfigured port + cable
-  auto-assigns an APIPA address (RFC 3927) after DHCP timeout (~45s/plug) — sufficient
-  for host-shell deploys, which are the primary path. Sandbox→box needs a documented
-  one-time host rule pair (forward accept + masquerade, §7b): coi's restricted mode
-  explicitly rejects sandbox traffic to `169.254.0.0/16`, and today's `100.64.0.1` path
-  never carried sandbox-originated deploys either (§4).
+      (no gateway, no DNS). Host side is zero-config: an unconfigured port + cable
+      auto-assigns an APIPA address (RFC 3927) after DHCP timeout (~45s/plug) — sufficient
+      for host-shell deploys, which are the primary path. Sandbox→box needs a documented
+      one-time host rule pair (forward accept + masquerade, §7b): coi's restricted mode
+      explicitly rejects sandbox traffic to `169.254.0.0/16`, and today's `100.64.0.1` path
+      never carried sandbox-originated deploys either (§4).
+      **Superseded 2026-09-23 by the micro-B-only transport ruling (§9, P7)** — kept for
+      context only; P7 replaces the spine. The host-APIPA premise also failed on the bench
+      (§4).
 - **plan.md is tracked** on this branch (committed; unlike the extraction repo's untracked
   plan). Delete it when the last checkbox lands, same lifecycle discipline.
 
@@ -193,6 +196,18 @@ warmup can't download anything even if the SDK tries — that is the point.
   P4.2, verified 2026-09-23): a bogus SN returns 200 with a 169-byte all-zero conf,
   so `curl -f` cannot validate the serial. The installer validates the fetched conf
   directly — a non-zero `fx` in any section — and rejects the placeholder loudly.
+- **ZED Box Mini port map** (researched 2026-09-23 from Stereolabs docs + store):
+  2× GMSL2 FAKRA-Z, 1× USB 3.0 Type-A (host-only, 5 Gbps), 1× GbE RJ45, 1× micro-USB
+  2.0 Type-B ("system flashing & OTG"; serial console in non-recovery mode per docs),
+  1× HDMI 1.4, sync in/out, CAN/UART/GPIO header. **No USB-C port exists** — the
+  zed-capture AGENTS "USB-C OTG" phone-link claim is a doc error (P7.3 fixes); the
+  README's "phone → USB-A" is the plausible bench truth (7.1b confirms). The micro-USB
+  cable ships in the box with every unit.
+- **Host APIPA fallback failed on the operator laptop** (bench, 2026-09-23): after
+  deleting the `zedbox` profile, NM created no auto ethernet profile and `enp5s0` held
+  no address for minutes (carrier up, no connection). The "host half resolved by docs"
+  claim for open item 2 is disproven by observation — real hosts may never self-assign.
+  This, plus the public-kit goal, is the root cause of the P7 transport pivot.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
@@ -314,6 +329,12 @@ warmup can't download anything even if the SDK tries — that is the point.
 
 ### P6 — bench validation + migration (no repo commits beyond checkbox flips)
 
+**Superseded 2026-09-23 by P7** — this phase validated the ethernet topology the micro-B
+ruling retires. The surviving items are folded into 7.4 (validation, reshaped for
+micro-B) and 7.3 (pulsar ssh_targets touch-up). 6.2's box migration is moot for
+micro-B-only boxes; its host-cleanup half rides with `migrate-zed-box.sh` until the
+operator's laptop is confirmed clean (7.3).
+
 - [ ] 6.1 Fresh-virgin-box install in default mode; then `--build` install. Checklist
       mirrors the extraction plan's gate: stack healthy, box-Loki queryable on-box, phone
       AOA link + log drain functional, warmup passed offline (this is the seeded
@@ -325,6 +346,65 @@ warmup can't download anything even if the SDK tries — that is the point.
       re-run `uv run sandbox authorize zed-box`, confirm `ssh zed-box` from a sandbox —
       via the §7 rule pair if the coi-generated target rules don't materialize or
       arrive shadowed. Deploys themselves run from the host shell (§9).
+
+### P7 — micro-B-only transport pivot (supersedes the ethernet spine; a fresh session starts here)
+
+The install/deploy channel becomes the micro-B OTG port in CDC-ethernet gadget mode:
+the box configures the host (driverless NIC, deterministic gadget address, DHCP served
+by the box), so no host-side networking state — NM profiles, APIPA fallback, VPNs,
+link-local quirks — can ever block an install. Rationale and ruling in §9. Everything
+downstream of "can I ssh the box" (askpass bootstrap, sudoers, deb-pinned docker,
+appliance strip, save|gzip|ssh load shipping, calibration seeding, offline-open
+assertion) carries over unchanged. The factory box currently on the operator's bench
+(the one that exposed the host-APIPA failure, §4) is the 7.1 subject.
+
+- [ ] 7.1 Bench gate on the physical box (operator; no repo commits; record in §4;
+      items gate their phases).
+      a. Stock JP6.1 micro-B gadget behavior: what `nv-l4t-usb-device-mode.service`
+      actually brings up on the Mini (serial only / mass-storage / CDC `usb0`
+      @192.168.55.1) and what a laptop sees. Decide the gadget config we persist:
+      CDC function choice (NCM preferred for cross-OS, ECM fallback), keep the serial
+      console if the composite allows it, and the subnet — stock 192.168.55.0/24 is
+      RFC1918, which coi restricted mode blocks for sandbox-originated deploys; rekeying
+      the gadget to non-RFC1918 (e.g. 100.64.0.1/24) preserves that option — operator
+      picks (public users are unaffected either way).
+      b. AOA port truth: confirm the phone operates from the Type-A port (README's
+      claim; the zed-capture doc's "USB-C" is a ghost — no such port exists) and that
+      AOA on Type-A coexists with the gadget service left permanently ENABLED on
+      micro-B (the disable step's original rationale is devkit-era or misattributed).
+      If AOA actually requires the micro-B port, STOP — one port cannot do gadget and
+      AOA host simultaneously; escalate to the operator before any code.
+      c. First contact over micro-B from the laptop: host NIC appears, host gets an
+      address from the box, `ssh user@<gadget-ip>` succeeds with factory creds; time
+      the link bring-up.
+- [ ] 7.2 Code (commit: `Pivot install transport to the micro-B gadget port`):
+      constants rekey (gadget address → `BOX_SSH_TARGET`, seconds-scale probe window);
+      `_box_reachable_at_static_ip` → gadget-address probe (loop shape unchanged);
+      ethernet discovery deleted wholesale — `_claim_box_via_apipa`,
+      `_apipa_interfaces`, `_discover_box_address`, `_scan_for_box`, the scheduled
+      flip + `NO_BOX_WIRED_CONNECTION` machinery, discovery constants, and its three
+      messages (~150 lines); the box's ethernet keeps factory state (no static
+      link-local config anywhere); stop disabling `nv-l4t-usb-device-mode` — replace
+      with the 7.1a gadget configure-and-persist; `--build` registry path unchanged
+      (`host_ip` = `$SSH_CLIENT` over `usb0`); keep the no-default-route tripwire and
+      the offline camera-open assertion; ruff + basedpyright green.
+- [ ] 7.3 Docs (commit: `Document micro-B installs; retire the ethernet spine`):
+      README quick start (the cable ships in the box, zero host configuration, delete
+      the APIPA-latency paragraph), `scripts/AGENTS.md` (delete spine/discovery/APIPA
+      timing sections; add the gadget section incl. `--build`-over-USB2 iteration
+      cost), `docker/zed-capture/AGENTS.md` (fix the "USB-C OTG" ghost; phone =
+      Type-A; micro-B = deploy + serial console; delete the link-local deploy path),
+      root `AGENTS.md` install-zed line stays accurate; pulsar `ssh_targets.zed-box`
+      example → gadget address (§8 follow-up); delete `migrate-zed-box.sh` +
+      `diagnose-zed-box.sh` once the operator's laptop cleanup is confirmed (until
+      then the migrate script's host-cleanup half remains the operator's tool).
+- [ ] 7.4 Bench validation (P6 reshaped; no repo commits beyond checkbox flips):
+      virgin-box install with **no ethernet cable attached at all** (micro-B only):
+      stack healthy, box-Loki queryable on-box, phone AOA link + log drain functional
+      on Type-A while the gadget idles, warmup/offline open passed, `ip route` shows
+      no default, unplug/replug micro-B → idempotent re-run; then `--build` over
+      micro-B; then a single-layer app-update round-trip (the update flow the public
+      actually rides). Note USB2 throughput for the record.
 
 ## 6. Hazards
 
@@ -429,3 +509,14 @@ worth a coi bug report either way — see §8).
   which is exactly the call that fails offline before the calibration is seeded — a
   diagnostic open cannot bootstrap itself. The prompt runs once per box; the seeded
   file makes later installs skip it (idempotency check on `SN*.conf`).
+- **Transport pivot: micro-B only, permanently** (operator ruling 2026-09-23, after the
+  host-APIPA bench failure §4 and the public-kit requirement): install/deploy/debug rides
+  the micro-B OTG port in CDC-ethernet gadget mode; the box configures the host, so no
+  host-side networking can block an install, and the needed cable ships with every unit
+  (USB2 speeds: minutes for a one-time install, seconds-to-a-minute for layer updates —
+  acceptable; `--build` iteration still functions over it). Ethernet support is deleted,
+  not dual-run: the APIPA discovery stack is one family of failure modes with no
+  population that needs it once micro-B exists, and the box's ethernet keeps factory
+  state. Type-A stays the AOA phone port. Supersedes the §1 link-local spine ruling;
+  P6 folds into P7. A dual-transport option was considered and rejected on
+  carrying-cost grounds (~120 lines plus the NM/APIPA failure family forever).
