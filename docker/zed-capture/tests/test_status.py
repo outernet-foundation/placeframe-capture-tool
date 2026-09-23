@@ -10,6 +10,8 @@ from src.routers import status as status_module
 @dataclass(frozen=True)
 class _FakeState:
     capture_id: UUID | None
+    tracking_state: str
+    stabilizing: bool
     last_exception: str | None
 
 
@@ -28,11 +30,18 @@ def test_status_reflects_actor_state(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         status_module.zed,
         "state",
-        lambda: _FakeState(capture_id=test_id, last_exception="boom"),
+        lambda: _FakeState(
+            capture_id=test_id,
+            tracking_state="OK",
+            stabilizing=True,
+            last_exception="boom",
+        ),
     )
 
     result = status_module.compute_status()
     assert result.current_capture_id == test_id
+    assert result.tracking_state == "OK"
+    assert result.stabilizing is True
     assert result.last_exception == "boom"
 
 
