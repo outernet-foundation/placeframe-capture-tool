@@ -39,15 +39,21 @@ namespace PlaceframeZedCaptureClient.Model
         /// <summary>
         /// Initializes a new instance of the <see cref="ZedStatus" /> class.
         /// </summary>
-        /// <param name="currentCaptureId">currentCaptureId.</param>
+        /// <param name="currentCaptureId">currentCaptureId (required).</param>
         /// <param name="trackingState">trackingState (required).</param>
         /// <param name="stabilizing">stabilizing (required).</param>
-        /// <param name="lastException">lastException.</param>
+        /// <param name="lastException">lastException (required).</param>
         /// <param name="diskFreeBytes">diskFreeBytes (required).</param>
         /// <param name="uptimeS">uptimeS (required).</param>
         /// <param name="varVersion">varVersion (required).</param>
-        public ZedStatus(string trackingState, bool stabilizing, long diskFreeBytes, double uptimeS, string varVersion)
+        public ZedStatus(Guid? currentCaptureId, string trackingState, bool stabilizing, string lastException, long diskFreeBytes, double uptimeS, string varVersion)
         {
+            // to ensure "currentCaptureId" is required (not null)
+            if (currentCaptureId == null)
+            {
+                throw new ArgumentNullException("currentCaptureId is a required property for ZedStatus and cannot be null");
+            }
+            this.CurrentCaptureId = currentCaptureId;
             // to ensure "trackingState" is required (not null)
             if (trackingState == null)
             {
@@ -55,6 +61,12 @@ namespace PlaceframeZedCaptureClient.Model
             }
             this.TrackingState = trackingState;
             this.Stabilizing = stabilizing;
+            // to ensure "lastException" is required (not null)
+            if (lastException == null)
+            {
+                throw new ArgumentNullException("lastException is a required property for ZedStatus and cannot be null");
+            }
+            this.LastException = lastException;
             this.DiskFreeBytes = diskFreeBytes;
             this.UptimeS = uptimeS;
             // to ensure "varVersion" is required (not null)
@@ -65,6 +77,30 @@ namespace PlaceframeZedCaptureClient.Model
             this.VarVersion = varVersion;
         }
 
+        /// <summary>
+        /// Gets or Sets CurrentCaptureId
+        /// </summary>
+        [DataMember(Name = "current_capture_id", IsRequired = true, EmitDefaultValue = true)]
+        public Guid? CurrentCaptureId
+        {
+            get{ return _CurrentCaptureId;}
+            set
+            {
+                _CurrentCaptureId = value;
+                _flagCurrentCaptureId = true;
+            }
+        }
+        private Guid? _CurrentCaptureId;
+        private bool _flagCurrentCaptureId;
+
+        /// <summary>
+        /// Returns false as CurrentCaptureId should not be serialized given that it's read-only.
+        /// </summary>
+        /// <returns>false (boolean)</returns>
+        public bool ShouldSerializeCurrentCaptureId()
+        {
+            return _flagCurrentCaptureId;
+        }
         /// <summary>
         /// Gets or Sets TrackingState
         /// </summary>
@@ -112,6 +148,30 @@ namespace PlaceframeZedCaptureClient.Model
         public bool ShouldSerializeStabilizing()
         {
             return _flagStabilizing;
+        }
+        /// <summary>
+        /// Gets or Sets LastException
+        /// </summary>
+        [DataMember(Name = "last_exception", IsRequired = true, EmitDefaultValue = true)]
+        public string LastException
+        {
+            get{ return _LastException;}
+            set
+            {
+                _LastException = value;
+                _flagLastException = true;
+            }
+        }
+        private string _LastException;
+        private bool _flagLastException;
+
+        /// <summary>
+        /// Returns false as LastException should not be serialized given that it's read-only.
+        /// </summary>
+        /// <returns>false (boolean)</returns>
+        public bool ShouldSerializeLastException()
+        {
+            return _flagLastException;
         }
         /// <summary>
         /// Gets or Sets DiskFreeBytes
@@ -186,54 +246,6 @@ namespace PlaceframeZedCaptureClient.Model
             return _flagVarVersion;
         }
         /// <summary>
-        /// Gets or Sets CurrentCaptureId
-        /// </summary>
-        [DataMember(Name = "current_capture_id", EmitDefaultValue = true)]
-        public Guid? CurrentCaptureId
-        {
-            get{ return _CurrentCaptureId;}
-            set
-            {
-                _CurrentCaptureId = value;
-                _flagCurrentCaptureId = true;
-            }
-        }
-        private Guid? _CurrentCaptureId;
-        private bool _flagCurrentCaptureId;
-
-        /// <summary>
-        /// Returns false as CurrentCaptureId should not be serialized given that it's read-only.
-        /// </summary>
-        /// <returns>false (boolean)</returns>
-        public bool ShouldSerializeCurrentCaptureId()
-        {
-            return _flagCurrentCaptureId;
-        }
-        /// <summary>
-        /// Gets or Sets LastException
-        /// </summary>
-        [DataMember(Name = "last_exception", EmitDefaultValue = true)]
-        public string LastException
-        {
-            get{ return _LastException;}
-            set
-            {
-                _LastException = value;
-                _flagLastException = true;
-            }
-        }
-        private string _LastException;
-        private bool _flagLastException;
-
-        /// <summary>
-        /// Returns false as LastException should not be serialized given that it's read-only.
-        /// </summary>
-        /// <returns>false (boolean)</returns>
-        public bool ShouldSerializeLastException()
-        {
-            return _flagLastException;
-        }
-        /// <summary>
         /// Returns the string presentation of the object
         /// </summary>
         /// <returns>String presentation of the object</returns>
@@ -241,13 +253,13 @@ namespace PlaceframeZedCaptureClient.Model
         {
             StringBuilder sb = new StringBuilder();
             sb.Append("class ZedStatus {\n");
+            sb.Append("  CurrentCaptureId: ").Append(CurrentCaptureId).Append("\n");
             sb.Append("  TrackingState: ").Append(TrackingState).Append("\n");
             sb.Append("  Stabilizing: ").Append(Stabilizing).Append("\n");
+            sb.Append("  LastException: ").Append(LastException).Append("\n");
             sb.Append("  DiskFreeBytes: ").Append(DiskFreeBytes).Append("\n");
             sb.Append("  UptimeS: ").Append(UptimeS).Append("\n");
             sb.Append("  VarVersion: ").Append(VarVersion).Append("\n");
-            sb.Append("  CurrentCaptureId: ").Append(CurrentCaptureId).Append("\n");
-            sb.Append("  LastException: ").Append(LastException).Append("\n");
             sb.Append("}\n");
             return sb.ToString();
         }

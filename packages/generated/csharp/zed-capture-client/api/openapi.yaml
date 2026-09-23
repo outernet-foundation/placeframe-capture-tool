@@ -304,7 +304,9 @@ components:
         version:
           type: string
       required:
+      - current_capture_id
       - disk_free_bytes
+      - last_exception
       - stabilizing
       - tracking_state
       - uptime_s
