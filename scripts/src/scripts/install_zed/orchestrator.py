@@ -9,7 +9,6 @@ from placeframe_common.logging_config import configure_logging
 
 from .box_install import install_box
 from .constants import BAKE_FILE, BOX_SSH_TARGET, ENV_LOCK_FILE, REPO_ROOT, SSH_KEY, ZED_STOCK_IMAGES
-from .host_setup import share_host_internet
 
 logger = getLogger(__name__)
 app = typer.Typer()
@@ -35,5 +34,4 @@ def main(
         SSH_KEY.parent.mkdir(parents=True, exist_ok=True)
         bash(f'ssh-keygen -t ed25519 -N "" -f {SSH_KEY}')
 
-    share_host_internet()
     install_box(build, service_shas, stock_digests)

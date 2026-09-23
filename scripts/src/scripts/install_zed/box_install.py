@@ -18,16 +18,20 @@ from .constants import (
     APPLIANCE_SYSTEM_UNITS_TO_MASK,
     APPLIANCE_USER_UNITS_TO_MASK,
     ALLOY_CONFIG_SOURCE,
+    ARP_SCAN_PING_COUNT,
     BAKE_FILE,
+    BOX_CIDR,
+    BOX_DISCOVERY_WAIT_SECONDS,
     BOX_IP,
     BOX_REACHABLE_PROBE_SECONDS,
     BOX_SSH_TARGET,
     COMPOSE_SOURCE,
-    DHCP_LEASE_WAIT_SECONDS,
     DOCKER_DEB_BASE,
     DOCKER_DEBS,
     GHCR_BASE,
     L4T_USB_DEVICE_MODE_UNIT,
+    LINK_LOCAL_BROADCAST,
+    LINK_LOCAL_PREFIX,
     LOKI_BOX_CONFIG_SOURCE,
     REGISTRY_IMAGE,
     REGISTRY_PORT,
@@ -45,17 +49,16 @@ from .constants import (
     ZED_SERVICES,
     ZED_STOCK_IMAGES,
 )
-from .host_setup import set_host_link_method
 from .messages import (
     ARM64_EMULATION_MISSING,
     BOX_ID_UNRESOLVABLE,
-    BOX_INTERFACE_UNPARSEABLE,
     BOX_LOGIN_PROMPT,
+    BOX_STATIC_FLIP_TIMEOUT,
     FACTORY_LOGIN_REJECTED,
     IMAGE_PULL_FAILED,
-    NO_ACTIVE_NM_CONNECTION,
+    NO_BOX_DISCOVERED,
     NO_BOX_WIRED_CONNECTION,
-    NO_DHCP_LEASE_RECEIVED,
+    NO_HOST_LINK_LOCAL_ADDRESS,
 )
 from .ssh import ssh_check, ssh_output, ssh_run
 
@@ -74,17 +77,15 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
     if build:
         _ensure_arm64_emulation()
 
-    # On a re-run the box already holds its static IP, so try it directly. A
-    # bare TCP liveness probe separates two cases an auth-gated probe conflates:
-    # the box is present but our key isn't installed (just needs the
-    # first-contact bootstrap), versus the box is absent and needs first-contact
-    # DHCP bootstrap. Gating on key auth would drop a reachable-but-unkeyed box
-    # into the DHCP path, where a statically-addressed box never requests a
-    # lease and the wait times out.
+    # On a re-run the box already holds its static address, so try it directly.
+    # A bare TCP liveness probe separates two cases an auth-gated probe
+    # conflates: the box is present but our key isn't installed (just needs the
+    # first-contact bootstrap), versus the box is absent at the static address
+    # and needs first-contact APIPA discovery.
     if _box_reachable_at_static_ip():
         _ensure_key_access(BOX_SSH_TARGET)
     else:
-        _claim_box_via_dhcp()
+        _claim_box_via_apipa()
 
     # Open one SSH connection and reuse it for every command below.
     logger.info("connecting_to_box", extra={"target": BOX_SSH_TARGET})
@@ -148,35 +149,9 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
             logger.info("adding_etc_hosts_entry", extra={"hostname": box_hostname})
             ssh_run("sudo tee -a /etc/hosts > /dev/null", stdin_text=f"127.0.0.1 {box_hostname}\n")
 
-        # Point the box's default gateway and DNS at the host so it can reach the internet.
-        # $SSH_CLIENT is the host IP the box can already reach us on — by
-        # construction the 100.64.0.0/24 address the host cable connection holds.
+        # The host's cable-side address as the box reaches it ($SSH_CLIENT) —
+        # keys the --build registry reference.
         host_ip = ssh_output("echo $SSH_CLIENT").split()[0]
-
-        route_out = ssh_output(f"ip route get {host_ip}").strip().split()
-        if "dev" not in route_out:
-            typer.echo(BOX_INTERFACE_UNPARSEABLE.format(host_ip=host_ip, route_out=repr(route_out)), err=True)
-            raise SystemExit(1)
-        box_interface = route_out[route_out.index("dev") + 1]
-        active_connections_raw = ssh_output("nmcli -t -f NAME,DEVICE con show --active").strip()
-        box_connection = next(
-            (
-                parts[0].replace("\\:", ":").replace("\\\\", "\\")
-                for line in active_connections_raw.splitlines()
-                if (parts := line.partition(":"))[2] == box_interface
-            ),
-            "",
-        )
-        if not box_connection:
-            typer.echo(
-                NO_ACTIVE_NM_CONNECTION.format(interface=box_interface, connections_raw=repr(active_connections_raw)),
-                err=True,
-            )
-            raise SystemExit(1)
-        ssh_run(
-            f'sudo nmcli con mod "{box_connection}" ipv4.gateway {host_ip} ipv4.dns 8.8.8.8 ipv4.ignore-auto-dns yes'
-        )
-        ssh_run(f'sudo nmcli con up "{box_connection}"')
 
         # Acquire container images (pull from ghcr.io, or cross-compile via local registry).
         images = _acquire_images(host_ip, build, service_shas)
@@ -304,21 +279,20 @@ def _box_reachable_at_static_ip() -> bool:
     logger.info("probing_box_reachability", extra={"box_ip": BOX_IP, "timeout_seconds": BOX_REACHABLE_PROBE_SECONDS})
     deadline = time.monotonic() + BOX_REACHABLE_PROBE_SECONDS
     while True:
-        try:
-            with socket.create_connection((BOX_IP, 22), timeout=2):
-                return True
-        except OSError:
-            if time.monotonic() >= deadline:
-                return False
+        if _ssh_port_open(BOX_IP):
+            return True
 
-            time.sleep(1)
+        if time.monotonic() >= deadline:
+            return False
+
+        time.sleep(1)
 
 
 def _ensure_key_access(target: str) -> None:
     # First-contact bootstrap. A virgin box has neither our SSH key nor
-    # passwordless sudo, and the steps that would install them (the DHCP-claim
-    # renumber's `sudo systemd-run`, the `sudo -n` rule refresh in install_box)
-    # both run over ssh with no TTY — stock sudo refuses to prompt there, so a
+    # passwordless sudo, and the steps that would install them (the APIPA-
+    # claim renumber's `sudo systemd-run`, the `sudo -n` rule refresh in
+    # install_box) both run over ssh with no TTY — stock sudo refuses to prompt there, so a
     # fresh box dies mid-flight. One password-authenticated session installs
     # both halves: the pubkey into authorized_keys and the SUDOERS_RULE
     # constant into /etc/sudoers.d/install-zed. On every bootstrapped box only
@@ -388,43 +362,37 @@ def _bootstrap_box_access(target: str, password: str) -> bool:
         return True
 
 
-def _claim_box_via_dhcp() -> None:
-    logger.info("claiming_box_via_dhcp")
-    # NM's dnsmasq re-reads the lease file on startup, so a prior bootstrap's
-    # entry survives a manual-shared-manual cycle and gets re-served, pointing
-    # at an IP the box no longer holds. Delete the file so dnsmasq starts
-    # empty.
-    bash_check("sudo find /var/lib/NetworkManager -maxdepth 1 -name 'dnsmasq-*.leases' -delete")
-    set_host_link_method("shared")
+def _claim_box_via_apipa() -> None:
+    logger.info("claiming_box_via_apipa")
+    interfaces = _apipa_interfaces()
+    if not interfaces:
+        typer.echo(NO_HOST_LINK_LOCAL_ADDRESS, err=True)
+        raise SystemExit(1)
 
-    logger.info("waiting_for_box_dhcp_lease", extra={"timeout_seconds": DHCP_LEASE_WAIT_SECONDS})
-    deadline = time.monotonic() + DHCP_LEASE_WAIT_SECONDS
-    leased_ip = ""
-    while not leased_ip:
-        # /var/lib/NetworkManager is root-only-readable. `find -name` (not
-        # the shell glob) handles a no-match gracefully.
-        raw = bash_output(
-            'sudo find /var/lib/NetworkManager -maxdepth 1 -name "dnsmasq-*.leases" -exec cat {} +'
-        ).strip()
-        now = time.time()
-        # Lease format: `<expiry-unix-ts> <mac> <ip> <hostname> <client-id>`.
-        for line in raw.splitlines():
-            parts = line.split()
-            if len(parts) >= 3 and parts[0].isdigit() and int(parts[0]) > now:
-                leased_ip = parts[2]
-                break
-        if not leased_ip:
-            if time.monotonic() >= deadline:
-                typer.echo(
-                    NO_DHCP_LEASE_RECEIVED.format(timeout_seconds=DHCP_LEASE_WAIT_SECONDS, box_ip=BOX_IP), err=True
-                )
-                raise SystemExit(1)
-            time.sleep(1)
+    deadline = time.monotonic() + BOX_DISCOVERY_WAIT_SECONDS
+    while True:
+        box_address = _discover_box_address(interfaces)
+        if box_address:
+            break
 
-    logger.info("box_dhcp_lease_acquired", extra={"leased_ip": leased_ip})
-    bootstrap_target = f"user@{leased_ip}"
+        if time.monotonic() >= deadline:
+            typer.echo(
+                NO_BOX_DISCOVERED.format(
+                    timeout_seconds=BOX_DISCOVERY_WAIT_SECONDS, interfaces=", ".join(interfaces), box_ip=BOX_IP
+                ),
+                err=True,
+            )
+            raise SystemExit(1)
+        time.sleep(1)
 
+    bootstrap_target = f"user@{box_address}"
     _ensure_key_access(bootstrap_target)
+
+    # A box already sitting at the static address was missed by the probe
+    # above, not by its renumber — flipping it would needlessly bounce the
+    # very link the multiplexer below is about to use.
+    if box_address == BOX_IP:
+        return
 
     # Find the wired ethernet device on the box, then ask which NM connection
     # currently holds it. `-g <single-field>` returns the value alone (no
@@ -445,30 +413,91 @@ def _claim_box_via_dhcp() -> None:
     ).strip()
 
     logger.info(
-        "renumbering_box_to_static",
-        extra={"connection": bootstrap_connection, "from": leased_ip, "to": BOX_IP},
+        "scheduling_flip_to_static",
+        extra={"connection": bootstrap_connection, "from": box_address, "to": BOX_IP},
     )
-    # Schedule the IP change as a systemd transient unit firing a few seconds
+    # Schedule the renumber as a systemd transient unit firing a few seconds
     # after our SSH disconnects. The box's TCP socket gets silently torn down
     # the instant nmcli activates the new address; running the renumber off
     # any live SSH session means the local client returns cleanly instead of
     # hanging on a half-dead connection. The renumber script is written via
     # a quoted heredoc so the connection name carries through verbatim, which
-    # collapses both layers of the previous ssh-shell-escape gymnastics.
+    # collapses both layers of the ssh-shell-escape gymnastics.
     remote_conn = shlex.quote(bootstrap_connection)
     bash(
         f"ssh {bootstrap_target} bash",
         stdin_text=(
             "cat > /tmp/zedbox-renumber.sh <<'SHELL_EOF'\n"
             f"nmcli con mod {remote_conn} ipv4.method manual "
-            f"ipv4.addresses {BOX_IP}/24 ipv4.gateway '' ipv4.dns ''\n"
+            f"ipv4.addresses {BOX_CIDR} ipv4.gateway '' ipv4.dns ''\n"
             f"nmcli con up {remote_conn}\n"
             "SHELL_EOF\n"
             "sudo systemd-run --on-active=3 /bin/sh /tmp/zedbox-renumber.sh\n"
         ),
     )
 
-    set_host_link_method("manual")
+    if not _box_reachable_at_static_ip():
+        typer.echo(BOX_STATIC_FLIP_TIMEOUT.format(box_ip=BOX_IP), err=True)
+        raise SystemExit(1)
+
+
+def _apipa_interfaces() -> list[str]:
+    # Carrier-up ethernet interfaces holding a self-assigned link-local
+    # address — the zero-config host half of the cable topology. Wifi is
+    # skipped: it is ARPHRD_ETHER too, and the box rides a cable.
+    interfaces: list[str] = []
+    for line in bash_output("ip -4 -o addr show").splitlines():
+        parts = line.split()
+        if len(parts) < 4 or parts[2] != "inet" or not parts[3].startswith(LINK_LOCAL_PREFIX):
+            continue
+        interface = parts[1].split("@")[0]
+        if interface in interfaces:
+            continue
+        sysfs_directory = Path("/sys/class/net") / interface
+        if (sysfs_directory / "phy80211").exists():
+            continue
+        try:
+            is_ethernet = (sysfs_directory / "type").read_text().strip() == "1"
+            is_up = (sysfs_directory / "operstate").read_text().strip() == "up"
+        except FileNotFoundError:
+            continue
+
+        if is_ethernet and is_up:
+            interfaces.append(interface)
+    return interfaces
+
+
+def _discover_box_address(interfaces: list[str]) -> str:
+    for interface in interfaces:
+        address = _scan_for_box(interface)
+        if address:
+            logger.info("box_discovered", extra={"address": address, "interface": interface})
+            return address
+    return ""
+
+
+def _scan_for_box(interface: str) -> str:
+    # A broadcast ping makes every link-local host on the segment answer, so
+    # `ip neigh` then lists their addresses. Leftover failed-probe entries
+    # (no lladdr, no service) are filtered out by the port check.
+    bash_check(f"ping -I {interface} -b -c {ARP_SCAN_PING_COUNT} -W 1 {LINK_LOCAL_BROADCAST}")
+    neighbors = sorted({
+        parts[0]
+        for line in bash_output(f"ip neigh show dev {interface}").splitlines()
+        if (parts := line.split()) and parts[0].startswith(LINK_LOCAL_PREFIX)
+    })
+    for address in neighbors:
+        if _ssh_port_open(address):
+            return address
+    return ""
+
+
+def _ssh_port_open(address: str) -> bool:
+    try:
+        with socket.create_connection((address, 22), timeout=2):
+            return True
+    except OSError:
+        return False
 
 
 def _ensure_arm64_emulation() -> None:

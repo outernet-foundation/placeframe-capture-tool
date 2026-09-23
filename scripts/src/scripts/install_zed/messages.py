@@ -1,19 +1,3 @@
-BOX_INTERFACE_UNPARSEABLE = "Could not parse box-facing interface from `ip route get {host_ip}`: {route_out}"
-
-NO_ACTIVE_NM_CONNECTION = (
-    "No active NetworkManager connection on box interface {interface}. Active list: {connections_raw}"
-)
-
-NO_UNUSED_WIRED_INTERFACE = """\
-Could not auto-detect an unused wired interface for the {connection_name!r} NM connection.
-Candidates: {candidates}.
-Configure manually: sudo nmcli con add type ethernet con-name {connection_name} \
-ethernet.mac-address <mac> ipv4.method manual ipv4.addresses {cidr}"""
-
-FIREWALLD_REQUIRED = """\
-firewalld is required on the host for the box→internet path (NAT + trusted-zone
-forwarding). On Ubuntu: sudo apt install firewalld."""
-
 ARM64_EMULATION_MISSING = """\
 Cross-building the box's linux/arm64 images on this x86 host needs QEMU
 binfmt_misc emulation, but no enabled qemu-aarch64 handler is registered.
@@ -39,12 +23,22 @@ Factory password rejected for {target}: this box's `user` password is not the
 Stereolabs factory default. The next prompt takes the box login password to
 retry the first-contact bootstrap."""
 
-NO_DHCP_LEASE_RECEIVED = """\
-Box did not request a DHCP lease within {timeout_seconds}s during bootstrap.
-Check that the ethernet cable is connected to the box and the box's wired
-NetworkManager connection is set to ipv4.method=auto (the L4T factory
-default). If the box already has a static IP, install-zed expects it to be
-{box_ip} — anything else won't be reached without bootstrap."""
+BOX_STATIC_FLIP_TIMEOUT = """\
+The box never answered at {box_ip} after the scheduled renumber. The factory
+address it was discovered at is in the box_discovered log line — ssh there and
+check `nmcli device status`, then re-run install-zed."""
+
+NO_BOX_DISCOVERED = """\
+No ZED Box found on the link-local segment within {timeout_seconds}s
+(ARP-scanned: {interfaces}). Check the cable and the box's power. A factory
+box self-assigns a 169.254.x.y address ~45s after boot; a box installed by
+install-zed already sits at {box_ip} and is found by the static probe."""
+
+NO_HOST_LINK_LOCAL_ADDRESS = """\
+No carrier-up ethernet interface holds a self-assigned link-local (169.254.x.y)
+address on this host. The host side is zero-config: plug the cable to the box
+and wait out NetworkManager's ~45s DHCP timeout — the port then falls back to
+a link-local address on its own. install-zed never configures host networking."""
 
 NO_BOX_WIRED_CONNECTION = """\
 Could not find a wired (802-3-ethernet) NetworkManager device on the box

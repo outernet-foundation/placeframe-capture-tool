@@ -58,16 +58,14 @@ SSH_MUX = f"-o ControlMaster=auto -o ControlPath={SSH_SOCKET} -o ControlPersist=
 SSH_KEY = Path.home() / ".ssh" / "id_ed25519"
 GHCR_BASE = "ghcr.io/outernet-foundation/placeframe-capture-tool"
 
-# Inside RFC 6598 Shared Address Space (100.64.0.0/10), not RFC1918, so
-# sandbox containers with RFC1918-block firewall rules can still reach the
-# box.
-BOX_SUBNET = "100.64.0.0/24"
-BOX_IP = "100.64.0.1"
-HOST_CABLE_CIDR = "100.64.0.2/24"
-HOST_NM_CONNECTION = "zedbox"
-HOST_NO_AUTO_DEFAULT_CONF = "/etc/NetworkManager/conf.d/zedbox-no-auto-default.conf"
-HOST_SYSCTL_FILE = "/etc/sysctl.d/99-zedbox.conf"
-HOST_SYSCTL_CONTENT = "net.ipv4.ip_forward = 1\n"
+# Cable-only link-local topology (RFC 3927). The host side is zero-config:
+# an unconfigured port falls back to a self-assigned APIPA address once DHCP
+# times out. The box holds one deterministic static address on the same /16,
+# with no gateway and no DNS — it never leaves the link.
+BOX_IP = "169.254.0.1"
+BOX_CIDR = "169.254.0.1/16"
+LINK_LOCAL_PREFIX = "169.254."
+LINK_LOCAL_BROADCAST = "169.254.255.255"
 BOX_SSH_TARGET = f"user@{BOX_IP}"
 
 DOCKER_DEB_BASE = "https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/arm64"
@@ -82,14 +80,14 @@ DOCKER_DEBS = [
 REGISTRY_IMAGE = "registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
 REGISTRY_PORT = 5000
 
-DHCP_LEASE_WAIT_SECONDS = 60
+BOX_DISCOVERY_WAIT_SECONDS = 60
+ARP_SCAN_PING_COUNT = 3
 
-# share_host_internet() bounces the host's NM link to the box immediately
-# before install_box probes it. Gigabit autoneg plus NM activation can leave
-# the box unreachable for a few seconds even though it holds a permanent static
-# address, so the reachability probe polls for this long before concluding the
-# box is absent and falling back to first-contact DHCP bootstrap.
-BOX_REACHABLE_PROBE_SECONDS = 20
+# The reachability probe polls for this long before concluding the box is
+# absent at its static address and falling back to first-contact APIPA
+# discovery. The window also covers host-side APIPA convergence on plug:
+# NetworkManager tries DHCP for ~45s before falling back to link-local.
+BOX_REACHABLE_PROBE_SECONDS = 75
 
 SUDOERS_RULE = (
     "user ALL=(ALL) NOPASSWD: /usr/bin/dpkg, /usr/sbin/usermod, /usr/bin/nvidia-ctk,"
