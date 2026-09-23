@@ -1,6 +1,6 @@
 services:
   zed-capture:
-    image: ${ZED_IMAGE:-ghcr.io/outernet-foundation/placeframe/zed-capture:${ZED_CAPTURE_SHA:?err}}
+    image: ${ZED_IMAGE:-ghcr.io/outernet-foundation/placeframe-capture-tool/zed-capture:${ZED_CAPTURE_SHA:?err}}
     network_mode: host
     privileged: true
     runtime: nvidia
@@ -33,7 +33,7 @@ services:
   # phone-side AOA client can multiplex concurrent requests over the single
   # accessory FD; uvicorn itself doesn't speak HTTP/2.
   aoa-gateway:
-    image: ${AOA_GATEWAY_IMAGE:-ghcr.io/outernet-foundation/placeframe/aoa-gateway:${AOA_GATEWAY_SHA:?err}}
+    image: ${AOA_GATEWAY_IMAGE:-ghcr.io/outernet-foundation/placeframe-capture-tool/aoa-gateway:${AOA_GATEWAY_SHA:?err}}
     network_mode: host
     environment:
       # Go HTTP/2 frame-level trace. Logs every SETTINGS/HEADERS/RST_STREAM/GOAWAY
@@ -49,7 +49,7 @@ services:
   # `devices:` would have snapshot-mapped only the device nodes present at
   # container start and would miss everything that hot-plugs after.
   aoa-bridge:
-    image: ${AOA_BRIDGE_IMAGE:-ghcr.io/outernet-foundation/placeframe/aoa-bridge:${AOA_BRIDGE_SHA:?err}}
+    image: ${AOA_BRIDGE_IMAGE:-ghcr.io/outernet-foundation/placeframe-capture-tool/aoa-bridge:${AOA_BRIDGE_SHA:?err}}
     network_mode: host
     privileged: true
     volumes:

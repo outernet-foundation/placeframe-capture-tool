@@ -39,7 +39,7 @@ REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
 SSH_SOCKET = "/tmp/install-zed-ssh-%C"
 SSH_MUX = f"-o ControlMaster=auto -o ControlPath={SSH_SOCKET} -o ControlPersist=120"
 SSH_KEY = Path.home() / ".ssh" / "id_ed25519"
-GHCR_BASE = "ghcr.io/outernet-foundation/placeframe"
+GHCR_BASE = "ghcr.io/outernet-foundation/placeframe-capture-tool"
 
 # Inside RFC 6598 Shared Address Space (100.64.0.0/10), not RFC1918, so
 # sandbox containers with RFC1918-block firewall rules can still reach the
