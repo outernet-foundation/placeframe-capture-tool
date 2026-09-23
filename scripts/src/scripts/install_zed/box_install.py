@@ -17,6 +17,7 @@ from .constants import (
     APPLIANCE_DEFAULT_TARGET,
     APPLIANCE_SYSTEM_UNITS_TO_MASK,
     APPLIANCE_USER_UNITS_TO_MASK,
+    ALLOY_CONFIG_SOURCE,
     BAKE_FILE,
     BOX_IP,
     BOX_REACHABLE_PROBE_SECONDS,
@@ -27,10 +28,13 @@ from .constants import (
     DOCKER_DEBS,
     GHCR_BASE,
     L4T_USB_DEVICE_MODE_UNIT,
+    LOKI_BOX_CONFIG_SOURCE,
     REGISTRY_IMAGE,
     REGISTRY_PORT,
+    REMOTE_ALLOY_CONFIG,
     REMOTE_COMPOSE,
     REMOTE_DIR,
+    REMOTE_LOKI_CONFIG,
     REMOTE_WAIT_FOR_ZED_CAMERA,
     SSH_KEY,
     SSH_MUX,
@@ -39,6 +43,7 @@ from .constants import (
     SYSTEMD_UNIT_SOURCE,
     WAIT_FOR_ZED_CAMERA_SOURCE,
     ZED_SERVICES,
+    ZED_STOCK_IMAGES,
 )
 from .host_setup import set_host_link_method
 from .messages import (
@@ -62,7 +67,7 @@ logger = getLogger(__name__)
 FACTORY_LOGIN = "admin"
 
 
-def install_box(build: bool, service_shas: dict[str, str]) -> None:
+def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[str, str]) -> None:
     # Fail before touching the box if the host can't actually cross-build the
     # arm64 images — otherwise the missing prerequisite only surfaces as an
     # opaque `exec format error` mid-build, after the box has been reconfigured.
@@ -176,13 +181,20 @@ def install_box(build: bool, service_shas: dict[str, str]) -> None:
         # Acquire container images (pull from ghcr.io, or cross-compile via local registry).
         images = _acquire_images(host_ip, build, service_shas)
 
+        # The stock observability images are never built locally: pulled from
+        # the org mirror in both install modes, digest-pinned from .env.lock.
+        for image in ZED_STOCK_IMAGES:
+            _pull_image_on_box(f"{image.reference}{stock_digests[image.digest_env]}")
+
         # Ship the compose file and supporting scripts. The aoa-alloy /
-        # aoa-loki configs ride inside the placeframe-owned wrapper images
-        # acquired above; no bind-mounted configs.
+        # aoa-loki configs ship as files beside the compose file and mount
+        # via compose configs: — the stock images carry no baked config.
         logger.info("transferring_compose_file", extra={"source": str(COMPOSE_SOURCE)})
         ssh_run(f"mkdir -p {REMOTE_DIR}")
         bash(f"scp {SSH_MUX} {COMPOSE_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_COMPOSE}")
         bash(f"scp {SSH_MUX} {WAIT_FOR_ZED_CAMERA_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_WAIT_FOR_ZED_CAMERA}")
+        bash(f"scp {SSH_MUX} {LOKI_BOX_CONFIG_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_LOKI_CONFIG}")
+        bash(f"scp {SSH_MUX} {ALLOY_CONFIG_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_ALLOY_CONFIG}")
 
         # Jetson hardware-burned serial survives OS reflashes.
         box_id = ssh_output("tr -d '\\0\\n' < /proc/device-tree/serial-number").strip()
@@ -192,9 +204,10 @@ def install_box(build: bool, service_shas: dict[str, str]) -> None:
 
         # Write the .env that compose reads: built-image refs + every SHA-keyed
         # variable compose.rig.yml references (one per box image; ZED_CAPTURE_SHA
-        # also feeds SERVICE_VERSION) + box hardware id for log tagging.
+        # also feeds SERVICE_VERSION) + the stock-image digest pins + box
+        # hardware id for log tagging.
         box_shas = {service.sha_key: service_shas[service.sha_key] for service in ZED_SERVICES}
-        env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas}.items())
+        env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas, **stock_digests}.items())
         ssh_run(f"tee {REMOTE_DIR}/.env", stdin_text=env_lines + f"ZED_BOX_ID={box_id}\n")
 
         # Install the systemd unit so the stack auto-starts on boot.

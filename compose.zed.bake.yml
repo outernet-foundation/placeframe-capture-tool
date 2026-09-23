@@ -3,6 +3,8 @@ x-base-images:
   CADDY_DIGEST: "ghcr.io/outernet-foundation/mirror/docker.io/library/caddy:2.8.4-alpine"
   UV_BASE_DIGEST: "ghcr.io/outernet-foundation/mirror/ghcr.io/astral-sh/uv:0.12.15-python3.13-trixie-slim"
   PYTHON_BASE_DIGEST: "ghcr.io/outernet-foundation/mirror/docker.io/library/python:3.13-slim@sha256:dc1546eefcbe8caaa1f004f16ab76b204b5e1dbd58ff81b899f21cd40541232f"
+  LOKI_DIGEST: "ghcr.io/outernet-foundation/mirror/docker.io/grafana/loki:3.5.0"
+  ALLOY_DIGEST: "ghcr.io/outernet-foundation/mirror/docker.io/grafana/alloy:v1.9.0"
 
 x-base-args: &base-args
   ZED_BASE_DIGEST: "${ZED_BASE_DIGEST:-}"
@@ -45,23 +47,3 @@ services:
       tags:
         - "ghcr.io/outernet-foundation/placeframe-capture-tool/aoa-gateway:latest"
         - "ghcr.io/outernet-foundation/placeframe-capture-tool/aoa-gateway:${AOA_GATEWAY_SHA}"
-  loki:
-    build:
-      context: .
-      dockerfile: docker/loki/Dockerfile
-      platforms: [ "linux/arm64" ]
-      args:
-        LOKI_DIGEST: "${LOKI_DIGEST:-}"
-      tags:
-        - "ghcr.io/outernet-foundation/placeframe-capture-tool/loki:latest"
-        - "ghcr.io/outernet-foundation/placeframe-capture-tool/loki:${LOKI_SHA}"
-  alloy:
-    build:
-      context: .
-      dockerfile: docker/alloy/Dockerfile
-      platforms: [ "linux/arm64" ]
-      args:
-        ALLOY_DIGEST: "${ALLOY_DIGEST:-}"
-      tags:
-        - "ghcr.io/outernet-foundation/placeframe-capture-tool/alloy:latest"
-        - "ghcr.io/outernet-foundation/placeframe-capture-tool/alloy:${ALLOY_SHA}"

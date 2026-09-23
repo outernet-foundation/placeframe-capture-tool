@@ -5,8 +5,7 @@ from pathlib import Path
 @dataclass(frozen=True)
 class ZedService:
     # Image base name and compose.zed.bake.yml target — the same string by
-    # construction. Not the compose.rig.yml service key: loki/alloy are baked as
-    # `loki`/`alloy` but keyed `aoa-loki`/`aoa-alloy` in the rig compose.
+    # construction.
     name: str
     # Env var compose.rig.yml uses to override the image (`${X:-default}`). Asymmetric
     # with name (`zed-capture` → `ZED_IMAGE`, not `ZED_CAPTURE_IMAGE`), so listed explicitly.
@@ -15,17 +14,30 @@ class ZedService:
     sha_key: str
 
 
-# Every image the box runs is cross-built (arm64) by `install-zed --build` and
-# pushed to the host's local registry, or pulled from ghcr.io otherwise. loki
-# and alloy are placeframe-owned wrapper images (grafana base + baked config)
-# built here too, so a local change to their config or any shared build-context
-# file never desyncs from a registry that lacks the resulting tree-SHA.
+@dataclass(frozen=True)
+class StockImage:
+    # Mirror reference without the digest suffix; the digest env value from
+    # .env.lock (`@sha256:...`) appends to form the full pullable reference.
+    reference: str
+    # Key into .env.lock carrying that digest suffix.
+    digest_env: str
+
+
+# Every first-party image the box runs is cross-built (arm64) by
+# `install-zed --build` and pushed to the host's local registry, or pulled
+# from ghcr.io otherwise.
 ZED_SERVICES: tuple[ZedService, ...] = (
     ZedService("zed-capture", "ZED_IMAGE", "ZED_CAPTURE_SHA"),
     ZedService("aoa-bridge", "AOA_BRIDGE_IMAGE", "AOA_BRIDGE_SHA"),
     ZedService("aoa-gateway", "AOA_GATEWAY_IMAGE", "AOA_GATEWAY_SHA"),
-    ZedService("loki", "LOKI_IMAGE", "LOKI_SHA"),
-    ZedService("alloy", "ALLOY_IMAGE", "ALLOY_SHA"),
+)
+
+# Observability stock images consumed straight from the org mirror,
+# digest-pinned via .env.lock — never built locally, pulled on the box in
+# both install modes.
+ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
+    StockImage("ghcr.io/outernet-foundation/mirror/docker.io/grafana/loki", "LOKI_DIGEST"),
+    StockImage("ghcr.io/outernet-foundation/mirror/docker.io/grafana/alloy", "ALLOY_DIGEST"),
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -33,9 +45,14 @@ BAKE_FILE = REPO_ROOT / "compose.zed.bake.yml"
 COMPOSE_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "compose.rig.yml"
 SYSTEMD_UNIT_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "placeframe-zed.service"
 WAIT_FOR_ZED_CAMERA_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "wait_for_zed_camera.py"
+LOKI_BOX_CONFIG_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "box.yaml"
+ALLOY_CONFIG_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "config.alloy"
+ENV_LOCK_FILE = REPO_ROOT / ".env.lock"
 REMOTE_DIR = "~/.placeframe"
 REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
+REMOTE_LOKI_CONFIG = f"{REMOTE_DIR}/box.yaml"
+REMOTE_ALLOY_CONFIG = f"{REMOTE_DIR}/config.alloy"
 SSH_SOCKET = "/tmp/install-zed-ssh-%C"
 SSH_MUX = f"-o ControlMaster=auto -o ControlPath={SSH_SOCKET} -o ControlPersist=120"
 SSH_KEY = Path.home() / ".ssh" / "id_ed25519"

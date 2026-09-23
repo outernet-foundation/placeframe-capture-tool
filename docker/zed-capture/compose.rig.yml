@@ -60,27 +60,32 @@ services:
   # Box-side Loki: monolithic mode, filesystem storage, 72h retention. Buffer
   # between aoa-alloy (writes) and the phone-relay (reads through box-Caddy's
   # /loki/* handle). Bound to 127.0.0.1:3100 so the wired ethernet doesn't
-  # expose the HTTP API. Reuses the placeframe-owned Loki wrapper image; the
-  # box-specific config is baked at /etc/loki/box.yaml alongside the main
-  # stack's /etc/loki/config.yaml — command picks the right one.
+  # expose the HTTP API. Stock mirror image, digest-pinned; the box-specific
+  # config ships beside this compose file and mounts via configs:.
   aoa-loki:
-    image: ${LOKI_IMAGE:-ghcr.io/outernet-foundation/placeframe/loki:${LOKI_SHA:?err}}
+    image: ghcr.io/outernet-foundation/mirror/docker.io/grafana/loki${LOKI_DIGEST:?err}
     network_mode: host
     volumes:
       - aoa-loki:/loki
     command: -config.file=/etc/loki/box.yaml
+    configs:
+      - source: loki-box-config
+        target: /etc/loki/box.yaml
     restart: "no"
 
   # Box-side Alloy: receives OTLP from zed-capture and aoa-gateway, forwards
-  # to aoa-loki. Reuses the placeframe-owned Alloy wrapper image — the config
-  # baked at /etc/alloy/config.alloy is identical to the main stack's;
-  # LOKI_WRITE_ENDPOINT drives the only per-stack difference.
+  # to aoa-loki. Stock mirror image, digest-pinned; the config file is the
+  # single mirror of the main stack's — LOKI_WRITE_ENDPOINT drives the only
+  # per-stack difference.
   aoa-alloy:
-    image: ${ALLOY_IMAGE:-ghcr.io/outernet-foundation/placeframe/alloy:${ALLOY_SHA:?err}}
+    image: ghcr.io/outernet-foundation/mirror/docker.io/grafana/alloy${ALLOY_DIGEST:?err}
     network_mode: host
     environment:
       LOKI_WRITE_ENDPOINT: http://127.0.0.1:3100/loki/api/v1/push
     command: run /etc/alloy/config.alloy --server.http.listen-addr=127.0.0.1:12345
+    configs:
+      - source: alloy-config
+        target: /etc/alloy/config.alloy
     restart: "no"
 
 volumes:
@@ -88,3 +93,9 @@ volumes:
   zed-logs:
   zed-state:
   aoa-loki:
+
+configs:
+  loki-box-config:
+    file: ./box.yaml
+  alloy-config:
+    file: ./config.alloy
