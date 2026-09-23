@@ -5,7 +5,7 @@ requires-python = ">=3.13"
 dependencies = [
     "bashrun>=0.1.0",
     "docker-devkit>=0.1.0",
-    "placeframe-common==0.1.0.dev35547537192",
+    "placeframe-common==0.1.0.dev35815669170",
     "typer>=0.15",
 ]
 
