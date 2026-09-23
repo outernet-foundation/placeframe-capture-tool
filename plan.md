@@ -238,15 +238,15 @@ warmup can't download anything even if the SDK tries — that is the point.
 
 ### P2 — networking rework (code commit: `Rework install networking to deterministic link-local`)
 
-- [ ] 2.1 `constants.py`: `BOX_IP = "169.254.0.1"`, delete host-side constants, add
+- [x] 2.1 `constants.py`: `BOX_IP = "169.254.0.1"`, delete host-side constants, add
       discovery constants (probe window, ARP-scan bits).
-- [ ] 2.2 Delete `host_setup.py`; `orchestrator.py` drops `share_host_internet()`.
-- [ ] 2.3 `box_install.py`: replace DHCP claim with APIPA discovery + askpass bootstrap
+- [x] 2.2 Delete `host_setup.py`; `orchestrator.py` drops `share_host_internet()`.
+- [x] 2.3 `box_install.py`: replace DHCP claim with APIPA discovery + askpass bootstrap
       at the discovered address + scheduled flip to `manual 169.254.0.1/16` (gateway/DNS
       cleared; reuse the `systemd-run` pattern). Extend the static-IP probe window.
-- [ ] 2.4 Delete the box gateway/DNS block. The box ends install with: one static
+- [x] 2.4 Delete the box gateway/DNS block. The box ends install with: one static
       link-local address, no default route.
-- [ ] 2.5 ruff + basedpyright green; `bashrun` guard on new shell lines (no `||`/pipes
+- [x] 2.5 ruff + basedpyright green; `bashrun` guard on new shell lines (no `||`/pipes
       outside `bash_pipe`).
 
 ### P3 — image acquisition (code commit: `Ship box images from the host instead of the box pulling`)
