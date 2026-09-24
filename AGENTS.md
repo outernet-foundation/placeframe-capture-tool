@@ -8,7 +8,7 @@ All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-de
 
 - `uv run install-zed` — end-to-end SSH deploy of the box stack (see `scripts/AGENTS.md`). `--build` cross-compiles images locally instead of pulling from ghcr.
 - `uv run install --build --project CaptureTool` — build the APK and install it on the host-attached phone with the `READ_LOGS` grant applied (unity-devkit). `uv run compile-unity --project CaptureTool --build android-mobile` for a build-only sanity check.
-- `uv run build --bake-file compose.zed.bake.yml --targets zed-capture --targets aoa-bridge --targets aoa-gateway [--mode ci --gpu none]` — bake the arm64 box images (docker-devkit). Needs QEMU + buildx on non-arm64 hosts.
+- `uv run build --targets zed-capture --targets aoa-bridge --targets aoa-gateway [--mode ci --gpu none]` — bake the arm64 box images per `compose.bake.yml` (docker-devkit). Needs QEMU + buildx on non-arm64 hosts.
 - `uv run openapi-client-codegen --config build/openapi-projects.json` — regenerate the zed-capture C# client from the service's OpenAPI spec. Needs Java 11+ on PATH.
 - `uvx --from python-devkit preflight-python` — the full check battery CI runs (sync, ruff, basedpyright, deptry, lock checks, pytest). CI's check job appends the codegen staleness guard (`openapi-client-codegen` + `git diff --exit-code -- packages/generated docker/zed-capture/openapi.json`).
 - Quick checks: `uv run ruff check .`, `uv run basedpyright`, `uv run pytest` (zed tests run against the stub; no camera needed).

@@ -6,7 +6,7 @@ USB-host daemon that handshakes a connected Android phone into accessory mode an
 
 Standard Python workspace member — `src/aoa_bridge/` package, `pyproject.toml` declaring `pyusb`, hatchling build backend, `pylock.toml` for transitive pins, `[project.scripts] aoa-bridge = "aoa_bridge.main:main"` exposing the entry point.
 
-The Dockerfile bakes deps in at build time (`libusb-1.0-0` via apt, `pyusb` via uv from `pylock.toml`) — no internet needed at container start. Built via `compose.zed.bake.yml` alongside `zed-capture` and shipped to the box via the same local-registry path `install-zed --build` uses.
+The Dockerfile bakes deps in at build time (`libusb-1.0-0` via apt, `pyusb` via uv from `pylock.toml`) — no internet needed at container start. Built via `compose.bake.yml` alongside `zed-capture` and shipped to the box via the same local-registry path `install-zed --build` uses.
 
 ## Protocol (`src/aoa_bridge/main.py`)
 

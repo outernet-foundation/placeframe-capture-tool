@@ -4,7 +4,7 @@ Thin workspace member carrying `install-zed`, the end-to-end SSH deploy of the Z
 
 ## Image acquisition
 
-Three first-party images (`zed-capture`, `aoa-bridge`, `aoa-gateway`) are cross-built arm64 from `compose.zed.bake.yml` — pushed to ghcr by CI (default install mode pulls them) or baked into a transient host-local registry (`--build`, layer-aware pulls across the cable). The two observability images are **stock** mirror pulls (`ZED_STOCK_IMAGES`), digest-pinned from `.env.lock` in both modes — never built locally. `ZED_SERVICES` lists only the three built services; `compute_service_shas` (docker-devkit) keys their tree-SHA tags.
+Three first-party images (`zed-capture`, `aoa-bridge`, `aoa-gateway`) are cross-built arm64 from `compose.bake.yml` — pushed to ghcr by CI (default install mode pulls them) or baked into a transient host-local registry (`--build`, layer-aware pulls across the cable). The two observability images are **stock** mirror pulls (`ZED_STOCK_IMAGES`), digest-pinned from `.env.lock` in both modes — never built locally. `ZED_SERVICES` lists only the three built services; `compute_service_shas` (docker-devkit) keys their tree-SHA tags.
 
 ## Constraints
 

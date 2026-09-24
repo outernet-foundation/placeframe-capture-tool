@@ -29,7 +29,7 @@ The runtime is a `threading.Thread`-based actor.
 - `src/zed/zed_stub.py` — non-rig stub for running without a camera attached. Used for shape-only tests.
 - `src/routers/captures.py` — REST surface (`/start`, `/stop`, `/captures`, `/captures/{id}` tar download). Endpoints dispatch to the actor via the worker-thread pool.
 - `wait_for_zed_camera.py` — boot guard that blocks until both nvargus's socket is connectable *and* `/dev/video0` + `/dev/video1` exist before the stack starts. See "Start the stack from the systemd unit, not the docker restart policy" below.
-- `compose.rig.yml` + `placeframe-zed.service` — box-side compose overlay and systemd unit installed by `install-zed`.
+- `placeframe-zed.service` — box-side systemd unit installed by `install-zed`; the `compose.rig.yml` overlay it starts lives at the repo root.
 
 ## Constraints
 
