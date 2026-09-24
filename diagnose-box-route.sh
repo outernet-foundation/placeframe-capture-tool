@@ -39,4 +39,23 @@ cat /etc/systemd/network/*.network 2>/dev/null
 echo
 echo "=== DHCP client processes ==="
 ps -ef | grep -Ei "[d]hcpcd|[d]hclient|[u]dhcpc" || echo "no dhcp client running"
+echo
+echo "=== dhcpd (server) process ==="
+ps -ef | grep [d]hcpd || echo "no dhcpd process"
+echo
+echo "=== L4T usb-device-mode config ==="
+cat /opt/nvidia/l4t-usb-device-mode/nv-l4t-usb-device-mode-config.sh
+echo
+echo "=== runtime-start.sh lines 40-100 ==="
+sed -n "40,100p" /opt/nvidia/l4t-usb-device-mode/nv-l4t-usb-device-mode-runtime-start.sh
+echo
+echo "=== dhcpd.conf ==="
+cat /opt/nvidia/l4t-usb-device-mode/dhcpd.conf
+echo
+echo "=== usb-device-mode unit states ==="
+systemctl is-enabled nv-l4t-usb-device-mode.service nv-l4t-usb-device-mode-runtime.service 2>&1
+systemctl is-active nv-l4t-usb-device-mode.service nv-l4t-usb-device-mode-runtime.service 2>&1
+echo
+echo "=== udev hooks into the state-change script ==="
+grep -rln "l4t-usb-device-mode" /etc/udev/rules.d/ /lib/udev/rules.d/ 2>/dev/null || echo "no udev rules reference it"
 '
