@@ -259,6 +259,13 @@ warmup can't download anything even if the SDK tries — that is the point.
   on first contact (key gen → probe → TOFU record → askpass factory-login
   bootstrap → mux → `sudo -n`), and left the box partially configured with
   idempotent steps — re-run resumes.
+- **RepoDigests do not survive the cable** (bench, 2026-09-24): the digest-pulled
+  loki arrived on the box (docker 29.3.1 at both ends) carrying a synthesized
+  RepoDigest (`d61e5117…`) instead of the pinned registry manifest digest
+  (`4c28f6be…`) — the in-sandbox save/load round-trip proved tags and
+  architecture survive, but not registry digests. Consequence: the stock pair is
+  referenced on the box by its transport tag (`placeframe-ship`) in both the box
+  `.env` and the post-load assertion; the digest pin's job ends at the host pull.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
