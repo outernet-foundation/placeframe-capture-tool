@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Read-only box-side diagnostics for the camera-open failure: daemon unit
 # states, the IPC socket directories on the host and inside the container,
-# the zed_x_daemon journal, and a fresh run of the offline camera-open
-# check (its exit status is the timing experiment). Runs from the operator
-# laptop over the installer's own ssh state (.placeframe/ssh/). Restarts
-# zed_x_daemon (stateless stock unit) once at the end to observe which
-# socket it creates.
+# the zed_x_daemon journal, a fresh run of the offline camera-open
+# check, and the socket path strings compiled into the ZEDX_Daemon binary
+# and the container's SDK libraries. Runs from the operator laptop over the
+# installer's own ssh state (.placeframe/ssh/) and changes nothing on
+# either side.
 
 set -u
 
@@ -46,17 +46,14 @@ echo
 echo "=== zed_x_daemon unit file ==="
 systemctl cat zed_x_daemon.service
 echo
-echo "=== full host unix socket table ==="
-cat /proc/net/unix
+echo "=== ZED/imu/argus services and processes on the host ==="
+systemctl list-units --type=service --no-pager --no-legend | grep -iE "zed|imu|argus" || echo "no matching units"
+ps aux | grep -iE "ZEDX|imu_daemon" | grep -v grep || echo "no matching processes"
 echo
-echo "=== /tmp on the host ==="
-ls -la /tmp
+echo "=== socket path strings inside ZEDX_Daemon (host binary) ==="
+ls -l /usr/sbin/ZEDX_Daemon
+grep -aoE "[/A-Za-z0-9_.-]*sock[/A-Za-z0-9_.-]*" /usr/sbin/ZEDX_Daemon | sort -u || echo "unreadable or no matches"
 echo
-echo "=== restarting zed_x_daemon and watching for its socket ==="
-sudo systemctl restart zed_x_daemon.service
-sleep 3
-grep -iE "zed|cam|sock" /proc/net/unix || echo "no matching unix socket paths after restart"
-ls -la /tmp | grep -iE "zed|sock" || echo "no zed/sock files in /tmp after restart"
-journalctl -u zed_x_daemon -n 10 --no-pager
-systemctl is-active zed_x_daemon
+echo "=== socket path strings inside the SDK libraries (container) ==="
+sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture find /usr/local/zed/lib -name "*.so*" -exec grep -aoE "[/A-Za-z0-9_.-]*sock[/A-Za-z0-9_.-]*" {} + | sort -u | head -40
 '
