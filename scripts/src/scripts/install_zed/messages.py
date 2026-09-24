@@ -19,7 +19,9 @@ role) picking up a gateway is the expected cause — unplug the cable and re-run
 A route via l4tbr0 means the gadget defroute defusal failed — see
 .placeframe/logs/install-zed.jsonl."""
 
-CAMERA_SERIAL_PROMPT = "ZED camera serial number (numeric, printed on the camera's label)"
+CAMERA_SERIAL_PROMPT = (
+    "ZED camera serial number (numeric, from the camera's label — the camera itself is unreachable to read it)"
+)
 
 CAMERA_SERIAL_INVALID = "The camera serial is the numeric string on the camera's label; got {serial!r}."
 

@@ -25,6 +25,7 @@ from .constants import (
     BOX_REACHABLE_PROBE_SECONDS,
     BOX_SSH_TARGET,
     CALIBRATION_DOWNLOAD_URL,
+    CAMERA_OPEN_PROBE,
     COMPOSE_SOURCE,
     DOCKER_DEB_BASE,
     DOCKER_DEBS,
@@ -235,14 +236,7 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # end-to-end. Failure is fatal — the propagated SDK error is the
         # diagnostic — rather than deferring a broken rig to first capture.
         logger.info("verifying_offline_camera_open")
-        # pyzed's open() returns an error code instead of raising, so the
-        # exit status is the assertion and the SDK's stderr diagnostics ride
-        # along with the failure.
-        ssh_run(
-            f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
-            '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); '
-            'e = c.open(p); c.close(); raise SystemExit(0 if e == sl.ERROR_CODE.SUCCESS else 1)"'
-        )
+        ssh_run(CAMERA_OPEN_PROBE)
 
         logger.info("install_done")
     finally:
@@ -576,16 +570,26 @@ def _seed_camera_calibration() -> None:
     # settings file is calibration source #1 on every SDK version, so the
     # host (which has internet) fetches the per-SN factory conf once and
     # seeds it into the box path compose bind-mounts at
-    # /usr/local/zed/settings. The serial comes from the camera's physical
-    # label: every on-box read path goes through open(), which is exactly
-    # the call that fails without this file.
-    if ssh_check(f"ls {ZED_SETTINGS_DIR}/SN*.conf"):
-        logger.info("camera_calibration_already_seeded")
-        return
+    # /usr/local/zed/settings. The serial comes from the camera itself when
+    # reachable: the GMSL init banner prints it even while open() fails on
+    # the missing calibration, so the probe output is authoritative where a
+    # label transcription never is. The settings dir accumulates confs from
+    # every camera ever attached to the box, so "already seeded" means "the
+    # conf for THIS serial exists" — never "any SN*.conf exists". The
+    # trailing `2>&1 ; true` merges the banner into the captured stdout and
+    # swallows the probe's failure exit; an unreachable camera or stack
+    # yields no serial and the label prompt takes over.
+    probe_output = ssh_output(f"{CAMERA_OPEN_PROBE} 2>&1 ; true")
+    serial_match = re.search(r"Serial Number: S/N (\d+)", probe_output)
+    serial = serial_match.group(1) if serial_match else None
+    if serial is None:
+        serial = typer.prompt(CAMERA_SERIAL_PROMPT).strip()
+        if not serial.isdigit():
+            _abort(CAMERA_SERIAL_INVALID.format(serial=serial))
 
-    serial = typer.prompt(CAMERA_SERIAL_PROMPT).strip()
-    if not serial.isdigit():
-        _abort(CAMERA_SERIAL_INVALID.format(serial=serial))
+    if ssh_check(f"ls {ZED_SETTINGS_DIR}/SN{serial}.conf"):
+        logger.info("camera_calibration_already_seeded", extra={"serial": serial})
+        return
 
     with tempfile.TemporaryDirectory() as temp_directory:
         calibration_path = Path(temp_directory) / f"SN{serial}.conf"

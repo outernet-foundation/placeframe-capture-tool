@@ -57,6 +57,15 @@ REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
 REMOTE_LOKI_CONFIG = f"{REMOTE_DIR}/box.yaml"
 REMOTE_ALLOY_CONFIG = f"{REMOTE_DIR}/config.alloy"
+# Shared exec line for the offline camera-open assertion and the pre-seed
+# serial probe: pyzed's open() returns an error code instead of raising, so
+# the exit status is the assertion and the SDK's stderr diagnostics ride
+# along with the failure.
+CAMERA_OPEN_PROBE = (
+    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
+    '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); '
+    'e = c.open(p); c.close(); raise SystemExit(0 if e == sl.ERROR_CODE.SUCCESS else 1)"'
+)
 # Box-side source of the compose bind mount into the container's
 # /usr/local/zed/settings — where the seeded per-camera calibration lives.
 ZED_SETTINGS_DIR = "/usr/local/zed/settings"
