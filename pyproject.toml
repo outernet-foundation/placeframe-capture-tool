@@ -31,6 +31,8 @@ scripts = { workspace = true }
 sync-args = ["--all-packages"]
 deptry-exclude = ["packages/generated/*"]
 
+[tool.docker-devkit.lifecycle]
+
 [tool.basedpyright]
 venvPath = "."
 venv = ".venv"

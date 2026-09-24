@@ -4,7 +4,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class ZedService:
-    # Image base name and compose.zed.bake.yml target — the same string by
+    # Image base name and compose.bake.yml target — the same string by
     # construction.
     name: str
     # Env var compose.rig.yml uses to override the image (`${X:-default}`). Asymmetric
@@ -41,8 +41,8 @@ ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-BAKE_FILE = REPO_ROOT / "compose.zed.bake.yml"
-COMPOSE_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "compose.rig.yml"
+BAKE_FILE = REPO_ROOT / "compose.bake.yml"
+COMPOSE_SOURCE = REPO_ROOT / "compose.rig.yml"
 SYSTEMD_UNIT_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "placeframe-zed.service"
 WAIT_FOR_ZED_CAMERA_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "wait_for_zed_camera.py"
 LOKI_BOX_CONFIG_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "box.yaml"

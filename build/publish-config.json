@@ -16,7 +16,7 @@
       "display_name": "Capture Tool"
     }
   ],
-  "compose_files": ["compose.zed.bake.yml"],
+  "compose_files": ["compose.bake.yml"],
   "ci_workflow": "ci.yml",
   "mirror_prefix": "ghcr.io/outernet-foundation/mirror"
 }
