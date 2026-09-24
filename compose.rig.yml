@@ -12,9 +12,18 @@ services:
       - zed-state:/var/lib/zed-capture
       - /usr/local/zed/settings:/usr/local/zed/settings
       - /usr/local/zed/resources:/usr/local/zed/resources
+      # SDK IPC, one file bind per socket: argus_socket is nvargus-daemon,
+      # nvscsock + camsock are the zed_x_daemon (GMSL) pair, imu_daemon.sock
+      # is IMU_Daemon and the only socket path compiled into libsl_zed.so —
+      # leaving it unmounted makes Camera.open fail with "Failed to connect
+      # to daemon socket" (ENOENT) and CAMERA MOTION SENSORS NOT DETECTED.
+      # File binds pin the inode at container creation: a host daemon restart
+      # recreates its socket and the container keeps the dead inode
+      # (ECONNREFUSED) until the container is recreated.
       - /tmp/argus_socket:/tmp/argus_socket
       - /tmp/nvscsock:/tmp/nvscsock
       - /tmp/camsock:/tmp/camsock
+      - /tmp/imu_daemon.sock:/tmp/imu_daemon.sock
     environment:
       ZED_BOX_ID: ${ZED_BOX_ID:?err}
       DEPLOYMENT_ENVIRONMENT: production
