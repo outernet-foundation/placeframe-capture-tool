@@ -313,9 +313,10 @@ def _bootstrap_box_access(password: str) -> bool:
     # ssh use the helper even with a terminal attached,
     # StrictHostKeyChecking=accept-new auto-accepts the first connection's host
     # key, and PubkeyAuthentication=no forces the password path so a pass
-    # actually proves the password. Failure returns False rather than raising:
-    # the caller retries once with an operator-entered password, and that retry
-    # raises loudly if the failure was anything but auth.
+    # actually proves the password. A `Permission denied` on the first call is
+    # the one failure that returns False — the caller retries with an
+    # operator-entered password; every other failure (transport drop, askpass
+    # trouble) raises loudly instead of masquerading as a wrong password.
     public_key = SSH_KEY.with_suffix(".pub").read_text()
     with tempfile.TemporaryDirectory() as temp_directory:
         askpass_helper = Path(temp_directory) / "install-zed-askpass"
@@ -334,28 +335,30 @@ def _bootstrap_box_access(password: str) -> bool:
         sudoers_install = "sudo -S install -m 0440 -o root -g root /tmp/install-zed.sudoers /etc/sudoers.d/install-zed"
         sudoers_cleanup = "rm /tmp/install-zed.sudoers"
         try:
-            bash(
+            bash_output(
                 f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(key_command)}",
                 stdin_text=public_key,
                 env=askpass_env,
             )
-            # The rule rides stdin and the same `sudo install` mechanism the
-            # refreshing_sudoers_rule step uses — it never passes through a
-            # remote shell parse, so SUDOERS_RULE needs no quoting at all.
-            bash(
-                f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_stage)}",
-                stdin_text=f"{SUDOERS_RULE}\n",
-                env=askpass_env,
-            )
-            bash(
-                f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_install)}",
-                stdin_text=f"{password}\n",
-                env=askpass_env,
-            )
-            bash(f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_cleanup)}", env=askpass_env)
-        except CalledProcessError:
+        except CalledProcessError as error:
+            if "Permission denied" not in (error.stderr or ""):
+                raise
             return False
 
+        # The rule rides stdin and the same `sudo install` mechanism the
+        # refreshing_sudoers_rule step uses — it never passes through a
+        # remote shell parse, so SUDOERS_RULE needs no quoting at all.
+        bash(
+            f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_stage)}",
+            stdin_text=f"{SUDOERS_RULE}\n",
+            env=askpass_env,
+        )
+        bash(
+            f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_install)}",
+            stdin_text=f"{password}\n",
+            env=askpass_env,
+        )
+        bash(f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_cleanup)}", env=askpass_env)
         return True
 
 
