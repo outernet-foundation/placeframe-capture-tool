@@ -116,7 +116,7 @@ BOX_REACHABLE_PROBE_SECONDS = 30
 
 SUDOERS_RULE = (
     "user ALL=(ALL) NOPASSWD: /usr/bin/dpkg, /usr/sbin/usermod, /usr/bin/nvidia-ctk,"
-    " /usr/bin/systemctl, /usr/bin/docker, /usr/bin/tee, /usr/bin/install"
+    " /usr/bin/systemctl, /usr/bin/docker, /usr/bin/tee, /usr/bin/install, /usr/sbin/ip"
 )
 
 # Brings the micro-B OTG port up as the CDC-ethernet gadget the install
@@ -124,6 +124,13 @@ SUDOERS_RULE = (
 # install-zed ensures the service is enabled and started; AOA host duty for
 # the phone runs on the separate Type-A port, so the two never conflict.
 L4T_USB_DEVICE_MODE_UNIT = "nv-l4t-usb-device-mode.service"
+
+# The stock scripts behind that unit also install a default route toward
+# the host on every gadget link-up — L4T's share-the-host's-internet
+# affordance, which an offline appliance must not have. The config's own
+# documentation is the knob: "Leave blank to prevent creating a default
+# route" (net_ipv4_defroute_router).
+L4T_USB_DEVICE_MODE_CONFIG = "/opt/nvidia/l4t-usb-device-mode/nv-l4t-usb-device-mode-config.sh"
 
 APPLIANCE_DEFAULT_TARGET = "multi-user.target"
 

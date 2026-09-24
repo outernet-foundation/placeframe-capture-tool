@@ -14,8 +14,10 @@ BOX_ID_UNRESOLVABLE = "Could not resolve box id: /proc/device-tree/serial-number
 IMAGE_UNRESOLVED_ON_BOX = "Image {image} is missing on the box after the save|load transfer — re-run install-zed."
 
 BOX_HAS_DEFAULT_ROUTE = """\
-The box has a default route — its ethernet port (factory state, no placeframe
-role) picked up a gateway; unplug the cable and re-run."""
+The box has a default route. Its ethernet port (factory state, no placeframe
+role) picking up a gateway is the expected cause — unplug the cable and re-run.
+A route via l4tbr0 means the gadget defroute defusal failed — see
+.placeframe/logs/install-zed.jsonl."""
 
 CAMERA_SERIAL_PROMPT = "ZED camera serial number (numeric, printed on the camera's label)"
 

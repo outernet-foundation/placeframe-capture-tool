@@ -1,6 +1,7 @@
 import configparser
 import json
 import platform
+import re
 import shlex
 import socket
 import tempfile
@@ -28,6 +29,7 @@ from .constants import (
     DOCKER_DEB_BASE,
     DOCKER_DEBS,
     GHCR_BASE,
+    L4T_USB_DEVICE_MODE_CONFIG,
     L4T_USB_DEVICE_MODE_UNIT,
     LOKI_BOX_CONFIG_SOURCE,
     REGISTRY_IMAGE,
@@ -140,6 +142,7 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # disable step on boxes that ran it.
         logger.info("ensuring_usb_device_mode_service", extra={"unit": L4T_USB_DEVICE_MODE_UNIT})
         ssh_quiet(f"sudo systemctl enable --now {L4T_USB_DEVICE_MODE_UNIT}")
+        _defuse_gadget_default_route()
 
         # Strip the JetPack desktop to a headless appliance; see _strip_to_appliance.
         _strip_to_appliance()
@@ -241,6 +244,26 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
     finally:
         # Close the SSH multiplexer (otherwise it lingers until ControlPersist expires).
         bash_check(f"ssh -o ControlPath={SSH_SOCKET} -O exit {BOX_SSH_TARGET}")
+
+
+def _defuse_gadget_default_route() -> None:
+    # Stock L4T behavior: runtime-start.sh runs on every gadget link-up (a
+    # udev rule fires it) and adds `default gw ${net_ipv4_defroute_router}`
+    # pointing at the host. Blanking the config variable is the scripts' own
+    # documented way to suppress that, and the runtime guard then never
+    # fires — durable across replugs, unlike deleting the route alone. The
+    # route already installed by this boot's link-up still gets dropped;
+    # never restart the gadget service to achieve that, it would bounce the
+    # link the install itself rides.
+    config = ssh_output(f"cat {L4T_USB_DEVICE_MODE_CONFIG}")
+    if re.search(r"^net_ipv4_defroute_router=$", config, re.MULTILINE):
+        logger.info("gadget_default_route_already_defused")
+    else:
+        logger.info("defusing_gadget_default_route")
+        defused = re.sub(r"^net_ipv4_defroute_router=.*$", "net_ipv4_defroute_router=", config, flags=re.MULTILINE)
+        ssh_quiet(f"sudo tee {L4T_USB_DEVICE_MODE_CONFIG}", stdin_text=defused)
+    if ssh_output("ip route show default dev l4tbr0").strip():
+        ssh_quiet("sudo ip route del default dev l4tbr0")
 
 
 def _strip_to_appliance() -> None:
