@@ -54,15 +54,11 @@ from .messages import (
     BOX_ID_UNRESOLVABLE,
     BOX_LOGIN_PROMPT,
     BOX_UNREACHABLE,
-    CALIBRATION_DOWNLOAD_FAILED,
     CALIBRATION_PLACEHOLDER,
-    CAMERA_OPEN_FAILED,
     CAMERA_SERIAL_INVALID,
     CAMERA_SERIAL_PROMPT,
     FACTORY_LOGIN_REJECTED,
-    IMAGE_PULL_FAILED,
     IMAGE_UNRESOLVED_ON_BOX,
-    REGISTRY_PULL_FAILED,
 )
 from .ssh import ssh_check, ssh_output, ssh_run
 
@@ -225,17 +221,14 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         # Offline camera-open assertion. With the seeded calibration, the
         # baked .isp profiles, and ZED_SDK_DISABLE_DOWNLOAD there is no
         # download path left, so a successful open proves the offline posture
-        # end-to-end. Failure is fatal and names the artifact instead of
-        # deferring a broken rig to first capture.
+        # end-to-end. Failure is fatal — the propagated SDK error is the
+        # diagnostic — rather than deferring a broken rig to first capture.
         if not build:
             logger.info("verifying_offline_camera_open")
-            try:
-                ssh_run(
-                    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
-                    '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); c.open(p); c.close()"'
-                )
-            except CalledProcessError:
-                _abort(CAMERA_OPEN_FAILED)
+            ssh_run(
+                f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
+                '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); c.open(p); c.close()"'
+            )
 
         logger.info("install_done")
     finally:
@@ -464,10 +457,7 @@ def _acquire_images(
 def _pull_image_on_host(reference: str, platform: str | None = None) -> None:
     logger.info("pulling_image_on_host", extra={"image": reference, "platform": platform})
     platform_option = f"--platform {platform} " if platform else ""
-    try:
-        bash(f"docker pull {platform_option}{reference}")
-    except CalledProcessError:
-        _abort(IMAGE_PULL_FAILED.format(image=reference))
+    bash(f"docker pull {platform_option}{reference}")
 
 
 def _ship_images_to_box(tagged_references: list[str], digest_references: list[str]) -> None:
@@ -496,10 +486,7 @@ def _ship_images_to_box(tagged_references: list[str], digest_references: list[st
 
 def _pull_image_from_registry(image: str) -> None:
     logger.info("pulling_image_from_registry", extra={"image": image})
-    try:
-        ssh_run(f"sudo docker pull {image}")
-    except CalledProcessError:
-        _abort(REGISTRY_PULL_FAILED.format(image=image))
+    ssh_run(f"sudo docker pull {image}")
 
 
 def _seed_camera_calibration() -> None:
@@ -522,10 +509,7 @@ def _seed_camera_calibration() -> None:
 
     with tempfile.TemporaryDirectory() as temp_directory:
         calibration_path = Path(temp_directory) / f"SN{serial}.conf"
-        try:
-            bash(f"curl -fsSL -o {calibration_path} {CALIBRATION_DOWNLOAD_URL.format(serial=serial)}")
-        except CalledProcessError:
-            _abort(CALIBRATION_DOWNLOAD_FAILED.format(serial=serial))
+        bash(f"curl -fsSL -o {calibration_path} {CALIBRATION_DOWNLOAD_URL.format(serial=serial)}")
 
         if not _calibration_is_real(calibration_path):
             _abort(CALIBRATION_PLACEHOLDER.format(serial=serial))
