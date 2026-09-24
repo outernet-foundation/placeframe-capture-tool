@@ -614,3 +614,15 @@ worth a coi bug report either way — see §8).
   on determinism, zero gadget surgery, and free persistence. install-zed's only gadget
   action is `systemctl enable --now`. No NCM/ECM re-author while deploys run on Linux
   hosts.
+- **Installer ssh state is repo-scoped, with host-key reset** (operator ruling
+  2026-09-24, after the first micro-B install died on a stale global-known_hosts
+  ECDSA entry for the shared gadget address): deploy key and known_hosts live under
+  the gitignored `.placeframe/ssh/`, all ssh/scp run `-F /dev/null` with pinned
+  identity/trust options — nothing in `~/.ssh` is read or written, and the installer
+  creates no persistent host state outside the repo working tree and the docker
+  daemon the build/pull modes already require. The mux socket is keyed per checkout,
+  and `_ensure_box_host_key` resets the owned known_hosts and retries once on a
+  changed key — TOFU-with-reset, the honest model for a point-to-point cable (every
+  L4T gadget answers at the same address, so churn on box swap or reflash is
+  expected, not suspicious). Supersedes the personal-key design
+  (`~/.ssh/id_ed25519`).
