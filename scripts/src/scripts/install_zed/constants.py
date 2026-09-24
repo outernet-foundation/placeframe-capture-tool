@@ -16,11 +16,9 @@ class ZedService:
 
 @dataclass(frozen=True)
 class StockImage:
-    # Mirror reference without the digest suffix; the digest env value from
-    # .env.lock (`@sha256:...`) appends to form the full pullable reference.
-    reference: str
-    # Key into .env.lock carrying that digest suffix.
-    digest_env: str
+    # Key into .env.lock carrying the full pinned reference
+    # (`path:tag@sha256:…`), pullable and compose-resolvable as-is.
+    image_env: str
 
 
 # Every first-party image the box runs is cross-built (arm64) by
@@ -33,11 +31,11 @@ ZED_SERVICES: tuple[ZedService, ...] = (
 )
 
 # Observability stock images consumed straight from the org mirror,
-# per-arch arm64 manifest digests from .env.lock — never built locally,
+# full per-arch arm64 refs from .env.lock — never built locally,
 # pulled on the host and shipped to the box in both install modes.
 ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
-    StockImage("ghcr.io/outernet-foundation/mirror/docker.io/grafana/loki", "LOKI_DIGEST"),
-    StockImage("ghcr.io/outernet-foundation/mirror/docker.io/grafana/alloy", "ALLOY_DIGEST"),
+    StockImage("LOKI_IMAGE"),
+    StockImage("ALLOY_IMAGE"),
 )
 
 # Transport tag pinned onto digest-pulled stock images before `docker save`:

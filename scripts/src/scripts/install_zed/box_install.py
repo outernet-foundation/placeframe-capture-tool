@@ -70,7 +70,7 @@ logger = getLogger(__name__)
 FACTORY_LOGIN = "admin"
 
 
-def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[str, str]) -> None:
+def install_box(build: bool, service_shas: dict[str, str], stock_images: dict[str, str]) -> None:
     # Fail before touching the box if the host can't actually cross-build the
     # arm64 images — otherwise the missing prerequisite only surfaces as an
     # opaque `exec format error` mid-build, after the box has been reconfigured.
@@ -157,7 +157,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         # (default), or cross-compile via the local registry (--build). The
         # stock observability images are never built locally — digest-pinned
         # mirror pulls shipped from the host in both modes.
-        images = _acquire_images(host_ip, build, service_shas, stock_digests)
+        images = _acquire_images(host_ip, build, service_shas, stock_images)
 
         # Ship the compose file and supporting scripts. The aoa-alloy /
         # aoa-loki configs ship as files beside the compose file and mount
@@ -176,10 +176,10 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
 
         # Write the .env that compose reads: built-image refs + every SHA-keyed
         # variable compose.rig.yml references (one per box image; ZED_CAPTURE_SHA
-        # also feeds SERVICE_VERSION) + the stock-image digest pins + box
+        # also feeds SERVICE_VERSION) + the stock-image pins + box
         # hardware id for log tagging.
         box_shas = {service.sha_key: service_shas[service.sha_key] for service in ZED_SERVICES}
-        env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas, **stock_digests}.items())
+        env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas, **stock_images}.items())
         ssh_run(f"tee {REMOTE_DIR}/.env", stdin_text=env_lines + f"ZED_BOX_ID={box_id}\n")
 
         # Install the systemd unit so the stack auto-starts on boot.
@@ -382,9 +382,9 @@ def _ensure_arm64_emulation() -> None:
 
 
 def _acquire_images(
-    host_ip: str, build: bool, service_shas: dict[str, str], stock_digests: dict[str, str]
+    host_ip: str, build: bool, service_shas: dict[str, str], stock_images: dict[str, str]
 ) -> dict[str, str]:
-    stock_references = [f"{image.reference}{stock_digests[image.digest_env]}" for image in ZED_STOCK_IMAGES]
+    stock_references = [stock_images[image.image_env] for image in ZED_STOCK_IMAGES]
 
     if not build:
         images = {
@@ -462,14 +462,15 @@ def _pull_image_on_host(reference: str, platform: str | None = None) -> None:
     bash(f"docker pull {platform_option}{reference}")
 
 
-def _ship_images_to_box(tagged_references: list[str], digest_references: list[str]) -> None:
-    # Digest-pulled images carry no tag, and a tagless tarball loses
-    # RepoDigests through save/load — compose resolves the stock refs by
-    # digest on the box, so pin a transport tag on before saving.
+def _ship_images_to_box(tagged_references: list[str], stock_references: list[str]) -> None:
+    # Stock refs are digest-pinned full references; the box resolves them
+    # via RepoDigests after load, so pin a deterministic transport tag on
+    # before saving — the tarball needs a plain tagged ref per image.
     save_references = list(tagged_references)
-    for digest_reference in digest_references:
-        tagged_reference = f"{digest_reference.split('@')[0]}:{STOCK_IMAGE_SHIP_TAG}"
-        bash(f"docker tag {digest_reference} {tagged_reference}")
+    for stock_reference in stock_references:
+        image_name = stock_reference.split("@")[0].rsplit(":", 1)[0]
+        tagged_reference = f"{image_name}:{STOCK_IMAGE_SHIP_TAG}"
+        bash(f"docker tag {stock_reference} {tagged_reference}")
         save_references.append(tagged_reference)
 
     logger.info("shipping_images_to_box", extra={"count": len(save_references)})
@@ -481,7 +482,7 @@ def _ship_images_to_box(tagged_references: list[str], digest_references: list[st
 
     # The box is offline: if a reference does not resolve there after the
     # load, compose has no fallback, so the failure must surface now.
-    for reference in [*tagged_references, *digest_references]:
+    for reference in [*tagged_references, *stock_references]:
         if not ssh_check(f"sudo docker image inspect {reference}"):
             _abort(IMAGE_UNRESOLVED_ON_BOX.format(image=reference))
 
