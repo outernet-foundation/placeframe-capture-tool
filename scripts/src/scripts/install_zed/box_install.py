@@ -9,6 +9,7 @@ import time
 from logging import getLogger
 from pathlib import Path
 from subprocess import CalledProcessError
+from typing import NoReturn
 
 import typer
 from bashrun.bash import bash, bash_check, bash_output, bash_pipe
@@ -61,8 +62,7 @@ from .messages import (
     BOX_LOGIN_PROMPT,
     BOX_UNREACHABLE,
     CALIBRATION_PLACEHOLDER,
-    CAMERA_SERIAL_INVALID,
-    CAMERA_SERIAL_PROMPT,
+    CAMERA_SERIAL_UNREADABLE,
     FACTORY_LOGIN_REJECTED,
     IMAGE_UNRESOLVED_ON_BOX,
 )
@@ -213,16 +213,19 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         logger.info("enabling_camera_daemons")
         ssh_quiet("sudo systemctl enable --now nvargus-daemon zed_x_daemon")
 
-        # Seed the per-camera factory calibration before the stack starts:
-        # the compose bind mount at /usr/local/zed/settings must carry it.
-        _seed_camera_calibration()
-
-        # Direct compose (not `systemctl restart placeframe-zed.service`) so the
-        # install can succeed on a box without the camera attached — the unit's
-        # wait_for_zed_camera ExecStartPre would otherwise time out.
+        # Direct compose (not `systemctl restart placeframe-zed.service`): the
+        # unit's wait_for_zed_camera ExecStartPre would gate the deploy on the
+        # daemons' boot timing, which the install's own ordering already
+        # handles.
         logger.info("redeploying_compose_stack", extra={"compose": REMOTE_COMPOSE})
         ssh_quiet(f"sudo docker compose -f {REMOTE_COMPOSE} down --remove-orphans")
         ssh_quiet(f"sudo docker compose -f {REMOTE_COMPOSE} up -d")
+
+        # Seed the per-camera factory calibration after the stack is up: the
+        # serial probe execs into the running container, and the settings
+        # bind is a directory mount — a conf seeded now is visible to the
+        # running container without a recreate.
+        _seed_camera_calibration()
 
         # Tripwire: nothing in install-zed adds a default route, and the
         # camera-open assertion below only proves the offline posture if the
@@ -570,23 +573,21 @@ def _seed_camera_calibration() -> None:
     # settings file is calibration source #1 on every SDK version, so the
     # host (which has internet) fetches the per-SN factory conf once and
     # seeds it into the box path compose bind-mounts at
-    # /usr/local/zed/settings. The serial comes from the camera itself when
-    # reachable: the GMSL init banner prints it even while open() fails on
-    # the missing calibration, so the probe output is authoritative where a
-    # label transcription never is. The settings dir accumulates confs from
-    # every camera ever attached to the box, so "already seeded" means "the
-    # conf for THIS serial exists" — never "any SN*.conf exists". The
-    # trailing `2>&1 ; true` merges the banner into the captured stdout and
-    # swallows the probe's failure exit; an unreachable camera or stack
-    # yields no serial and the label prompt takes over.
+    # /usr/local/zed/settings. The serial comes from the camera itself: the
+    # GMSL init banner prints it even while open() fails on the missing
+    # calibration. The install is headless — an unreadable serial is fatal,
+    # no label-prompt fallback exists, and the camera is a prerequisite of
+    # the closing camera-open assertion anyway. The settings dir accumulates
+    # confs from every camera ever attached to the box, so "already seeded"
+    # means "the conf for THIS serial exists" — never "any SN*.conf exists".
+    # The trailing `2>&1 ; true` merges the banner into the captured stdout
+    # and swallows the probe's failure exit (the missing calibration is the
+    # expected failure here).
     probe_output = ssh_output(f"{CAMERA_OPEN_PROBE} 2>&1 ; true")
     serial_match = re.search(r"Serial Number: S/N (\d+)", probe_output)
-    serial = serial_match.group(1) if serial_match else None
-    if serial is None:
-        logger.info("camera_serial_unreadable", extra={"probe_output": probe_output.strip()[-400:]})
-        serial = typer.prompt(CAMERA_SERIAL_PROMPT).strip()
-        if not serial.isdigit():
-            _abort(CAMERA_SERIAL_INVALID.format(serial=serial))
+    if serial_match is None:
+        _abort(CAMERA_SERIAL_UNREADABLE.format(probe_tail=probe_output.strip()[-400:]))
+    serial = serial_match.group(1)
 
     if ssh_check(f"ls {ZED_SETTINGS_DIR}/SN{serial}.conf"):
         logger.info("camera_calibration_already_seeded", extra={"serial": serial})
@@ -615,6 +616,6 @@ def _calibration_is_real(calibration_path: Path) -> bool:
     return any(parser.has_option(section, "fx") and parser.getint(section, "fx") > 0 for section in parser.sections())
 
 
-def _abort(message: str) -> None:
+def _abort(message: str) -> NoReturn:
     typer.echo(message, err=True)
     raise SystemExit(1)

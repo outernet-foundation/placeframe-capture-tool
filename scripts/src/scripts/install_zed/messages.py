@@ -19,11 +19,13 @@ role) picking up a gateway is the expected cause — unplug the cable and re-run
 A route via l4tbr0 means the gadget defroute defusal failed — see
 .placeframe/logs/install-zed.jsonl."""
 
-CAMERA_SERIAL_PROMPT = (
-    "ZED camera serial number (numeric, from the camera's label — the camera itself is unreachable to read it)"
-)
+CAMERA_SERIAL_UNREADABLE = """\
+The camera probe returned no serial line — the install is headless and the
+camera is its own serial source, so the camera must be attached and reachable
+for install-zed to complete. Attach the camera (FAKRA to port 0) and re-run.
+Probe output tail:
 
-CAMERA_SERIAL_INVALID = "The camera serial is the numeric string on the camera's label; got {serial!r}."
+{probe_tail}"""
 
 CALIBRATION_PLACEHOLDER = """\
 calib.stereolabs.com returned a placeholder (all-zero) calibration for SN
