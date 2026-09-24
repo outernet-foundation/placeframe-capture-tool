@@ -69,14 +69,14 @@ SSH_MUX = f"-o ControlMaster=auto -o ControlPath={SSH_SOCKET} -o ControlPersist=
 SSH_KEY = Path.home() / ".ssh" / "id_ed25519"
 GHCR_BASE = "ghcr.io/outernet-foundation/placeframe-capture-tool"
 
-# Cable-only link-local topology (RFC 3927). The host side is zero-config:
-# an unconfigured port falls back to a self-assigned APIPA address once DHCP
-# times out. The box holds one deterministic static address on the same /16,
-# with no gateway and no DNS — it never leaves the link.
-BOX_IP = "169.254.0.1"
-BOX_CIDR = "169.254.0.1/16"
-LINK_LOCAL_PREFIX = "169.254."
-LINK_LOCAL_BROADCAST = "169.254.255.255"
+# Micro-B OTG transport. nv-l4t-usb-device-mode brings the port up as a
+# CDC-ethernet gadget at the stock L4T address (192.168.55.1) and serves
+# DHCP to the host over the cable — the box configures the host, so no
+# host-side networking state exists to manage or fail. Stock config is
+# kept verbatim: the address is deterministic, and rekeying the subnet
+# buys nothing while restricted-mode sandbox filters reject 100.64.0.0/10
+# exactly like RFC1918.
+BOX_IP = "192.168.55.1"
 BOX_SSH_TARGET = f"user@{BOX_IP}"
 
 DOCKER_DEB_BASE = "https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/arm64"
@@ -91,23 +91,21 @@ DOCKER_DEBS = [
 REGISTRY_IMAGE = "registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
 REGISTRY_PORT = 5000
 
-BOX_DISCOVERY_WAIT_SECONDS = 60
-ARP_SCAN_PING_COUNT = 3
-
 # The reachability probe polls for this long before concluding the box is
-# absent at its static address and falling back to first-contact APIPA
-# discovery. The window also covers host-side APIPA convergence on plug:
-# NetworkManager tries DHCP for ~45s before falling back to link-local.
-BOX_REACHABLE_PROBE_SECONDS = 75
+# absent at the gadget address. Gadget link bring-up is seconds-scale —
+# driver bind and NetworkManager activation on the host, DHCP served by the
+# box — and the window also covers a box that just booted (service start).
+BOX_REACHABLE_PROBE_SECONDS = 30
 
 SUDOERS_RULE = (
     "user ALL=(ALL) NOPASSWD: /usr/bin/dpkg, /usr/sbin/usermod, /usr/bin/nvidia-ctk,"
     " /usr/bin/systemctl, /usr/bin/docker, /usr/bin/tee, /usr/bin/nmcli, /usr/bin/install"
 )
 
-# Pins the Jetson's USB-C port as a USB gadget, which is incompatible with
-# the box acting as USB host for the phone-as-accessory link. Disabling
-# frees the port for host duty.
+# Brings the micro-B OTG port up as the CDC-ethernet gadget the install
+# itself rides (stock L4T composite: network, serial console, mass-storage).
+# install-zed ensures the service is enabled and started; AOA host duty for
+# the phone runs on the separate Type-A port, so the two never conflict.
 L4T_USB_DEVICE_MODE_UNIT = "nv-l4t-usb-device-mode.service"
 
 APPLIANCE_DEFAULT_TARGET = "multi-user.target"

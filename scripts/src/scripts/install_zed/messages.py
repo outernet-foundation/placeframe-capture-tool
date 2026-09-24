@@ -60,24 +60,10 @@ Factory password rejected for {target}: this box's `user` password is not the
 Stereolabs factory default. The next prompt takes the box login password to
 retry the first-contact bootstrap."""
 
-BOX_STATIC_FLIP_TIMEOUT = """\
-The box never answered at {box_ip} after the scheduled renumber. The factory
-address it was discovered at is in the box_discovered log line — ssh there and
-check `nmcli device status`, then re-run install-zed."""
-
-NO_BOX_DISCOVERED = """\
-No ZED Box found on the link-local segment within {timeout_seconds}s
-(ARP-scanned: {interfaces}). Check the cable and the box's power. A factory
-box self-assigns a 169.254.x.y address ~45s after boot; a box installed by
-install-zed already sits at {box_ip} and is found by the static probe."""
-
-NO_HOST_LINK_LOCAL_ADDRESS = """\
-No carrier-up ethernet interface holds a self-assigned link-local (169.254.x.y)
-address on this host. The host side is zero-config: plug the cable to the box
-and wait out NetworkManager's ~45s DHCP timeout — the port then falls back to
-a link-local address on its own. install-zed never configures host networking."""
-
-NO_BOX_WIRED_CONNECTION = """\
-Could not find a wired (802-3-ethernet) NetworkManager device on the box
-during bootstrap. nmcli device list:
-{raw}"""
+BOX_UNREACHABLE = """\
+The box never answered at {box_ip} within {timeout_seconds}s. Check the
+micro-B cable (the one shipped with the box) and the box's power. The link
+needs nv-l4t-usb-device-mode.service active on the box — a box installed
+before the micro-B pivot, or a vendor image with the service off, must
+enable it once over ethernet:
+sudo systemctl enable --now nv-l4t-usb-device-mode.service"""
