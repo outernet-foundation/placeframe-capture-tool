@@ -19,7 +19,7 @@ The camera is a swappable implementation detail behind the output contract (ster
 
 ### 1. Set up the box
 
-From a Linux host with a wired ethernet connection to the box (a direct cable works; the install tooling configures the link):
+From a Linux host connected to the box's micro-USB port with the cable shipped in the box (zero configuration on the host: the box brings the link up as a USB ethernet gadget and hands the host an address — the host never configures anything):
 
 ```bash
 git clone https://github.com/outernet-foundation/placeframe-capture-tool.git
@@ -28,7 +28,7 @@ uv sync
 uv run install-zed
 ```
 
-`install-zed` bootstraps a virgin Stereolabs box end-to-end — SSH access, Docker, the NVIDIA container runtime, an appliance strip of the stock desktop, and the capture stack (pulled from this repo's public GHCR images). A `--build` flag cross-compiles the images locally instead. Re-runs are idempotent; see `scripts/AGENTS.md` for the full picture.
+`install-zed` bootstraps a virgin Stereolabs box end-to-end — SSH access, Docker, the NVIDIA container runtime, an appliance strip of the stock desktop, and the capture stack (images pulled on the host and shipped over the cable; the box itself never touches the internet). It prompts once for the camera's serial number (on the camera's label) to seed the factory calibration. A `--build` flag cross-compiles the images locally instead. Re-runs are idempotent; see `scripts/AGENTS.md` for the full picture.
 
 ### 2. Install the phone app
 

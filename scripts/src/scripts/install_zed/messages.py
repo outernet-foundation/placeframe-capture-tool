@@ -1,52 +1,36 @@
-BOX_INTERFACE_UNPARSEABLE = "Could not parse box-facing interface from `ip route get {host_ip}`: {route_out}"
-
-NO_ACTIVE_NM_CONNECTION = (
-    "No active NetworkManager connection on box interface {interface}. Active list: {connections_raw}"
-)
-
-NO_UNUSED_WIRED_INTERFACE = """\
-Could not auto-detect an unused wired interface for the {connection_name!r} NM connection.
-Candidates: {candidates}.
-Configure manually: sudo nmcli con add type ethernet con-name {connection_name} \
-ethernet.mac-address <mac> ipv4.method manual ipv4.addresses {cidr}"""
-
-FIREWALLD_REQUIRED = """\
-firewalld is required on the host for the box→internet path (NAT + trusted-zone
-forwarding). On Ubuntu: sudo apt install firewalld."""
-
 ARM64_EMULATION_MISSING = """\
-Cross-building the box's linux/arm64 images on this x86 host needs QEMU
-binfmt_misc emulation, but no enabled qemu-aarch64 handler is registered.
-Without it the build dies on the first arm64 RUN step with `exec format error`.
+Cross-building arm64 images on this x86 host needs QEMU:
+docker run --privileged --rm tonistiigi/binfmt --install arm64
+(persists until reboot) — or pull prebuilt images with plain
+`uv run install-zed`."""
 
-Register the emulators on the host (persists until reboot), then retry:
-  docker run --privileged --rm tonistiigi/binfmt --install arm64
-
-Or skip local cross-compilation and pull prebuilt images from ghcr.io instead:
-  uv run install-zed"""
+BOX_HOST_KEY_STUCK = """\
+Host-key verification still fails after the installer's known_hosts reset —
+not a state the point-to-point cable can produce. Something on this host is
+diverting ssh to the gadget address; see .placeframe/logs/install-zed.jsonl."""
 
 BOX_ID_UNRESOLVABLE = "Could not resolve box id: /proc/device-tree/serial-number is empty or missing"
 
-IMAGE_PULL_FAILED = """\
-Image pull failed for {image}. Either the tag has not been pushed to ghcr.io
-yet, or the ZED Box is offline. Push via CI (merge/push to trigger the build
-workflow) or build locally with: uv run install-zed --build"""
+IMAGE_UNRESOLVED_ON_BOX = "Image {image} is missing on the box after the save|load transfer — re-run install-zed."
+
+BOX_HAS_DEFAULT_ROUTE = """\
+The box has a default route — its ethernet port (factory state, no placeframe
+role) picked up a gateway; unplug the cable and re-run."""
+
+CAMERA_SERIAL_PROMPT = "ZED camera serial number (numeric, printed on the camera's label)"
+
+CAMERA_SERIAL_INVALID = "The camera serial is the numeric string on the camera's label; got {serial!r}."
+
+CALIBRATION_PLACEHOLDER = """\
+calib.stereolabs.com returned a placeholder (all-zero) calibration for SN
+{serial}: the serial does not match a manufactured camera. Check it against
+the camera's label and re-run install-zed."""
 
 BOX_LOGIN_PROMPT = "box login password (installs the install-zed SSH key and the passwordless sudo rule)"
 
-FACTORY_LOGIN_REJECTED = """\
-Factory password rejected for {target}: this box's `user` password is not the
-Stereolabs factory default. The next prompt takes the box login password to
-retry the first-contact bootstrap."""
+FACTORY_LOGIN_REJECTED = "Factory password rejected — the next prompt takes this box's current `user` password."
 
-NO_DHCP_LEASE_RECEIVED = """\
-Box did not request a DHCP lease within {timeout_seconds}s during bootstrap.
-Check that the ethernet cable is connected to the box and the box's wired
-NetworkManager connection is set to ipv4.method=auto (the L4T factory
-default). If the box already has a static IP, install-zed expects it to be
-{box_ip} — anything else won't be reached without bootstrap."""
-
-NO_BOX_WIRED_CONNECTION = """\
-Could not find a wired (802-3-ethernet) NetworkManager device on the box
-during bootstrap. nmcli device list:
-{raw}"""
+BOX_UNREACHABLE = """\
+No answer at {box_ip} within {timeout_seconds}s. Check the micro-B cable, the
+box's power, and that nv-l4t-usb-device-mode.service is active on the box —
+a pre-pivot box needs it enabled once over ethernet."""

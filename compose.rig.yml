@@ -20,6 +20,9 @@ services:
       DEPLOYMENT_ENVIRONMENT: production
       SERVICE_VERSION: ${ZED_CAPTURE_SHA:?err}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4317
+      # The box is offline by design; any SDK download attempt (calibration,
+      # AI models) must fail fast instead of hanging on a dead route.
+      ZED_SDK_DISABLE_DOWNLOAD: "1"
     # "no" so dockerd never starts a container on its own. Any policy other than
     # "no" makes dockerd restart a was-running container on daemon startup (after
     # an unclean power-cut the container object survives in running state), which

@@ -1,3 +1,4 @@
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,11 +17,9 @@ class ZedService:
 
 @dataclass(frozen=True)
 class StockImage:
-    # Mirror reference without the digest suffix; the digest env value from
-    # .env.lock (`@sha256:...`) appends to form the full pullable reference.
-    reference: str
-    # Key into .env.lock carrying that digest suffix.
-    digest_env: str
+    # Key into .env.lock carrying the full pinned reference
+    # (`path:tag@sha256:…`), pullable and compose-resolvable as-is.
+    image_env: str
 
 
 # Every first-party image the box runs is cross-built (arm64) by
@@ -33,12 +32,17 @@ ZED_SERVICES: tuple[ZedService, ...] = (
 )
 
 # Observability stock images consumed straight from the org mirror,
-# digest-pinned via .env.lock — never built locally, pulled on the box in
-# both install modes.
+# full per-arch arm64 refs from .env.lock — never built locally,
+# pulled on the host and shipped to the box in both install modes.
 ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
-    StockImage("ghcr.io/outernet-foundation/mirror/docker.io/grafana/loki", "LOKI_DIGEST"),
-    StockImage("ghcr.io/outernet-foundation/mirror/docker.io/grafana/alloy", "ALLOY_DIGEST"),
+    StockImage("LOKI_IMAGE"),
+    StockImage("ALLOY_IMAGE"),
 )
+
+# Transport tag pinned onto digest-pulled stock images before `docker save`:
+# a tagless image loses RepoDigests through save/load, and compose resolves
+# the stock refs by digest on the box.
+STOCK_IMAGE_SHIP_TAG = "placeframe-ship"
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 BAKE_FILE = REPO_ROOT / "compose.bake.yml"
@@ -53,21 +57,43 @@ REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
 REMOTE_LOKI_CONFIG = f"{REMOTE_DIR}/box.yaml"
 REMOTE_ALLOY_CONFIG = f"{REMOTE_DIR}/config.alloy"
-SSH_SOCKET = "/tmp/install-zed-ssh-%C"
+# Box-side source of the compose bind mount into the container's
+# /usr/local/zed/settings — where the seeded per-camera calibration lives.
+ZED_SETTINGS_DIR = "/usr/local/zed/settings"
+# Stereolabs' factory-calibration service; the only artifact install-zed
+# ever fetches from stereolabs.com, fetched once on the host at seed time.
+CALIBRATION_DOWNLOAD_URL = "https://calib.stereolabs.com/?SN={serial}"
+# All installer ssh state is repo-scoped under the gitignored .placeframe/:
+# the deploy key and known_hosts live here, logs beside them. Nothing in
+# ~/.ssh is ever read or written — a fresh clone bootstraps itself, and the
+# operator's own Jetson entries can never collide with the box (every L4T
+# gadget device answers at this same address, so global known_hosts churns
+# on any Jetson ever plugged in).
+SSH_STATE_DIR = REPO_ROOT / ".placeframe" / "ssh"
+SSH_KEY = SSH_STATE_DIR / "id_ed25519"
+SSH_KNOWN_HOSTS = SSH_STATE_DIR / "known_hosts"
+# Keyed on the checkout so concurrent installs from two clones never ride
+# one master (each clone deploys its own key); %C hashes the ssh target.
+SSH_SOCKET = f"/tmp/install-zed-ssh-{hashlib.sha256(str(REPO_ROOT).encode()).hexdigest()[:8]}-%C"
 SSH_MUX = f"-o ControlMaster=auto -o ControlPath={SSH_SOCKET} -o ControlPersist=120"
-SSH_KEY = Path.home() / ".ssh" / "id_ed25519"
+# -F /dev/null pins every option here: no ~/.ssh/config Host block,
+# ProxyJump, or alternate identity can divert the install connection.
+SSH_TRUST = (
+    f"-i {SSH_KEY} -o IdentitiesOnly=yes -F /dev/null"
+    f" -o UserKnownHostsFile={SSH_KNOWN_HOSTS} -o GlobalKnownHostsFile=/dev/null"
+    " -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR"
+)
+SSH_OPTIONS = f"{SSH_MUX} {SSH_TRUST}"
 GHCR_BASE = "ghcr.io/outernet-foundation/placeframe-capture-tool"
 
-# Inside RFC 6598 Shared Address Space (100.64.0.0/10), not RFC1918, so
-# sandbox containers with RFC1918-block firewall rules can still reach the
-# box.
-BOX_SUBNET = "100.64.0.0/24"
-BOX_IP = "100.64.0.1"
-HOST_CABLE_CIDR = "100.64.0.2/24"
-HOST_NM_CONNECTION = "zedbox"
-HOST_NO_AUTO_DEFAULT_CONF = "/etc/NetworkManager/conf.d/zedbox-no-auto-default.conf"
-HOST_SYSCTL_FILE = "/etc/sysctl.d/99-zedbox.conf"
-HOST_SYSCTL_CONTENT = "net.ipv4.ip_forward = 1\n"
+# Micro-B OTG transport. nv-l4t-usb-device-mode brings the port up as a
+# CDC-ethernet gadget at the stock L4T address (192.168.55.1) and serves
+# DHCP to the host over the cable — the box configures the host, so no
+# host-side networking state exists to manage or fail. Stock config is
+# kept verbatim: the address is deterministic, and rekeying the subnet
+# buys nothing while restricted-mode sandbox filters reject 100.64.0.0/10
+# exactly like RFC1918.
+BOX_IP = "192.168.55.1"
 BOX_SSH_TARGET = f"user@{BOX_IP}"
 
 DOCKER_DEB_BASE = "https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/arm64"
@@ -82,23 +108,21 @@ DOCKER_DEBS = [
 REGISTRY_IMAGE = "registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
 REGISTRY_PORT = 5000
 
-DHCP_LEASE_WAIT_SECONDS = 60
-
-# share_host_internet() bounces the host's NM link to the box immediately
-# before install_box probes it. Gigabit autoneg plus NM activation can leave
-# the box unreachable for a few seconds even though it holds a permanent static
-# address, so the reachability probe polls for this long before concluding the
-# box is absent and falling back to first-contact DHCP bootstrap.
-BOX_REACHABLE_PROBE_SECONDS = 20
+# The reachability probe polls for this long before concluding the box is
+# absent at the gadget address. Gadget link bring-up is seconds-scale —
+# driver bind and NetworkManager activation on the host, DHCP served by the
+# box — and the window also covers a box that just booted (service start).
+BOX_REACHABLE_PROBE_SECONDS = 30
 
 SUDOERS_RULE = (
     "user ALL=(ALL) NOPASSWD: /usr/bin/dpkg, /usr/sbin/usermod, /usr/bin/nvidia-ctk,"
-    " /usr/bin/systemctl, /usr/bin/docker, /usr/bin/tee, /usr/bin/nmcli, /usr/bin/install"
+    " /usr/bin/systemctl, /usr/bin/docker, /usr/bin/tee, /usr/bin/install"
 )
 
-# Pins the Jetson's USB-C port as a USB gadget, which is incompatible with
-# the box acting as USB host for the phone-as-accessory link. Disabling
-# frees the port for host duty.
+# Brings the micro-B OTG port up as the CDC-ethernet gadget the install
+# itself rides (stock L4T composite: network, serial console, mass-storage).
+# install-zed ensures the service is enabled and started; AOA host duty for
+# the phone runs on the separate Type-A port, so the two never conflict.
 L4T_USB_DEVICE_MODE_UNIT = "nv-l4t-usb-device-mode.service"
 
 APPLIANCE_DEFAULT_TARGET = "multi-user.target"
