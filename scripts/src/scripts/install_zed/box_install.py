@@ -179,11 +179,15 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
 
         # Write the .env that compose reads: built-image refs + every SHA-keyed
         # variable compose.rig.yml references (one per box image; ZED_CAPTURE_SHA
-        # also feeds SERVICE_VERSION) + the stock-image pins + box
-        # hardware id for log tagging.
+        # also feeds SERVICE_VERSION) + the stock-image ship tags + box
+        # hardware id for log tagging. The stock pair is referenced by its
+        # transport tag, not the digest pin: docker load synthesizes its own
+        # RepoDigest instead of restoring the registry one, so a digest ref
+        # cannot resolve on the box — the pin governs the host pull.
         box_shas = {service.sha_key: service_shas[service.sha_key] for service in ZED_SERVICES}
         stock_images = {image.image_env: env_lock[image.image_env] for image in ZED_STOCK_IMAGES}
-        env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas, **stock_images}.items())
+        stock_ship_tags = {key: _ship_tag(value) for key, value in stock_images.items()}
+        env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas, **stock_ship_tags}.items())
         ssh_quiet(f"tee {REMOTE_DIR}/.env", stdin_text=env_lines + f"ZED_BOX_ID={box_id}\n")
 
         # Install the systemd unit so the stack auto-starts on boot.
@@ -503,13 +507,13 @@ def _pull_image_on_host(reference: str, platform: str | None = None) -> None:
 
 
 def _ship_images_to_box(tagged_references: list[str], stock_references: list[str]) -> None:
-    # Stock refs are digest-pinned full references; the box resolves them
-    # via RepoDigests after load, so pin a deterministic transport tag on
-    # before saving — the tarball needs a plain tagged ref per image.
+    # A tarball needs a plain tagged ref per image, and the tag is also the
+    # box-side reference for the stock pair: docker load synthesizes its own
+    # RepoDigest instead of restoring the registry one, so a digest ref
+    # cannot resolve after the cable — the digest pin governs the host pull.
     save_references = list(tagged_references)
     for stock_reference in stock_references:
-        image_name = stock_reference.split("@")[0].rsplit(":", 1)[0]
-        tagged_reference = f"{image_name}:{STOCK_IMAGE_SHIP_TAG}"
+        tagged_reference = _ship_tag(stock_reference)
         bash(f"docker tag {stock_reference} {tagged_reference}")
         save_references.append(tagged_reference)
 
@@ -521,10 +525,16 @@ def _ship_images_to_box(tagged_references: list[str], stock_references: list[str
     )
 
     # The box is offline: if a reference does not resolve there after the
-    # load, compose has no fallback, so the failure must surface now.
-    for reference in [*tagged_references, *stock_references]:
+    # load, compose has no fallback, so the failure must surface now. The
+    # checked set is exactly what the box .env hands compose.
+    box_references = [*tagged_references, *(_ship_tag(reference) for reference in stock_references)]
+    for reference in box_references:
         if not ssh_check(f"sudo docker image inspect {reference}"):
             _abort(IMAGE_UNRESOLVED_ON_BOX.format(image=reference))
+
+
+def _ship_tag(reference: str) -> str:
+    return f"{reference.split('@')[0].rsplit(':', 1)[0]}:{STOCK_IMAGE_SHIP_TAG}"
 
 
 def _pull_image_from_registry(image: str) -> None:
