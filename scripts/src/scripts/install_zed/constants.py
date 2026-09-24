@@ -81,7 +81,7 @@ SSH_MUX = f"-o ControlMaster=auto -o ControlPath={SSH_SOCKET} -o ControlPersist=
 SSH_TRUST = (
     f"-i {SSH_KEY} -o IdentitiesOnly=yes -F /dev/null"
     f" -o UserKnownHostsFile={SSH_KNOWN_HOSTS} -o GlobalKnownHostsFile=/dev/null"
-    " -o StrictHostKeyChecking=accept-new"
+    " -o StrictHostKeyChecking=accept-new -o LogLevel=ERROR"
 )
 SSH_OPTIONS = f"{SSH_MUX} {SSH_TRUST}"
 GHCR_BASE = "ghcr.io/outernet-foundation/placeframe-capture-tool"

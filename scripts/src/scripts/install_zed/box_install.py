@@ -63,7 +63,7 @@ from .messages import (
     FACTORY_LOGIN_REJECTED,
     IMAGE_UNRESOLVED_ON_BOX,
 )
-from .ssh import ssh_check, ssh_output, ssh_run
+from .ssh import ssh_check, ssh_output, ssh_quiet, ssh_run
 
 logger = getLogger(__name__)
 
@@ -104,9 +104,9 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # bootstrapped box this step's real job is propagating SUDOERS_RULE
         # evolution across installer versions.
         logger.info("refreshing_sudoers_rule")
-        ssh_run("cat > /tmp/install-zed.sudoers", stdin_text=SUDOERS_RULE + "\n")
-        ssh_run("sudo -n install -m 0440 -o root -g root /tmp/install-zed.sudoers /etc/sudoers.d/install-zed")
-        ssh_run("rm /tmp/install-zed.sudoers")
+        ssh_quiet("cat > /tmp/install-zed.sudoers", stdin_text=SUDOERS_RULE + "\n")
+        ssh_quiet("sudo -n install -m 0440 -o root -g root /tmp/install-zed.sudoers /etc/sudoers.d/install-zed")
+        ssh_quiet("rm /tmp/install-zed.sudoers")
 
         # Install Docker from pinned .deb URLs (Ubuntu's repo is a moving target).
         if ssh_check("which docker"):
@@ -121,9 +121,9 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
                 bash(f"scp {SSH_OPTIONS} {temp_directory}/*.deb {BOX_SSH_TARGET}:/tmp/")
             deb_paths = " ".join(f"/tmp/{deb_file}" for deb_file in DOCKER_DEBS)
             box_user = BOX_SSH_TARGET.split("@")[0]
-            ssh_run(f"sudo dpkg -i {deb_paths}")
-            ssh_run(f"sudo usermod -aG docker {box_user}")
-            ssh_run(f"rm {deb_paths}")
+            ssh_quiet(f"sudo dpkg -i {deb_paths}")
+            ssh_quiet(f"sudo usermod -aG docker {box_user}")
+            ssh_quiet(f"rm {deb_paths}")
             logger.info("docker_installed", extra={"user": box_user})
 
         # Wire NVIDIA Container Toolkit into dockerd so compose's `runtime: nvidia` works.
@@ -131,15 +131,15 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
             logger.info("nvidia_runtime_already_configured")
         else:
             logger.info("configuring_nvidia_runtime")
-            ssh_run("sudo nvidia-ctk runtime configure --runtime=docker")
-            ssh_run("sudo systemctl restart docker")
+            ssh_quiet("sudo nvidia-ctk runtime configure --runtime=docker")
+            ssh_quiet("sudo systemctl restart docker")
 
         # The gadget service is the transport this install rides. Idempotent:
         # `enable` only symlinks, `--now` only starts an inactive unit, so a
         # live link is never bounced. Reverts the pre-pivot installer's own
         # disable step on boxes that ran it.
         logger.info("ensuring_usb_device_mode_service", extra={"unit": L4T_USB_DEVICE_MODE_UNIT})
-        ssh_run(f"sudo systemctl enable --now {L4T_USB_DEVICE_MODE_UNIT}")
+        ssh_quiet(f"sudo systemctl enable --now {L4T_USB_DEVICE_MODE_UNIT}")
 
         # Strip the JetPack desktop to a headless appliance; see _strip_to_appliance.
         _strip_to_appliance()
@@ -150,7 +150,7 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
             logger.info("etc_hosts_entry_present", extra={"hostname": box_hostname})
         else:
             logger.info("adding_etc_hosts_entry", extra={"hostname": box_hostname})
-            ssh_run("sudo tee -a /etc/hosts > /dev/null", stdin_text=f"127.0.0.1 {box_hostname}\n")
+            ssh_quiet("sudo tee -a /etc/hosts > /dev/null", stdin_text=f"127.0.0.1 {box_hostname}\n")
 
         # The host's gadget-side address as the box reaches it ($SSH_CLIENT) —
         # keys the --build registry reference.
@@ -166,7 +166,7 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # aoa-loki configs ship as files beside the compose file and mount
         # via compose configs: — the stock images carry no baked config.
         logger.info("transferring_compose_file", extra={"source": str(COMPOSE_SOURCE)})
-        ssh_run(f"mkdir -p {REMOTE_DIR}")
+        ssh_quiet(f"mkdir -p {REMOTE_DIR}")
         bash(f"scp {SSH_OPTIONS} {COMPOSE_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_COMPOSE}")
         bash(f"scp {SSH_OPTIONS} {WAIT_FOR_ZED_CAMERA_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_WAIT_FOR_ZED_CAMERA}")
         bash(f"scp {SSH_OPTIONS} {LOKI_BOX_CONFIG_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_LOKI_CONFIG}")
@@ -184,7 +184,7 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         box_shas = {service.sha_key: service_shas[service.sha_key] for service in ZED_SERVICES}
         stock_images = {image.image_env: env_lock[image.image_env] for image in ZED_STOCK_IMAGES}
         env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas, **stock_images}.items())
-        ssh_run(f"tee {REMOTE_DIR}/.env", stdin_text=env_lines + f"ZED_BOX_ID={box_id}\n")
+        ssh_quiet(f"tee {REMOTE_DIR}/.env", stdin_text=env_lines + f"ZED_BOX_ID={box_id}\n")
 
         # Install the systemd unit so the stack auto-starts on boot.
         logger.info("installing_systemd_unit", extra={"unit": "placeframe-zed.service"})
@@ -197,13 +197,13 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
             .replace("COMPOSE_PATH", remote_compose_abs)
             .replace("WAIT_FOR_ZED_CAMERA_PATH", remote_wait_for_zed_camera_abs)
         )
-        ssh_run("sudo tee /etc/systemd/system/placeframe-zed.service > /dev/null", stdin_text=unit_content)
-        ssh_run("sudo systemctl daemon-reload")
-        ssh_run("sudo systemctl enable placeframe-zed.service")
+        ssh_quiet("sudo tee /etc/systemd/system/placeframe-zed.service > /dev/null", stdin_text=unit_content)
+        ssh_quiet("sudo systemctl daemon-reload")
+        ssh_quiet("sudo systemctl enable placeframe-zed.service")
 
         # Start the host-side camera daemons; the container bind-mounts their IPC sockets.
         logger.info("enabling_camera_daemons")
-        ssh_run("sudo systemctl enable --now nvargus-daemon zed_x_daemon")
+        ssh_quiet("sudo systemctl enable --now nvargus-daemon zed_x_daemon")
 
         # Seed the per-camera factory calibration before the stack starts:
         # the compose bind mount at /usr/local/zed/settings must carry it.
@@ -213,8 +213,8 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # install can succeed on a box without the camera attached — the unit's
         # wait_for_zed_camera ExecStartPre would otherwise time out.
         logger.info("redeploying_compose_stack", extra={"compose": REMOTE_COMPOSE})
-        ssh_run(f"sudo docker compose -f {REMOTE_COMPOSE} down --remove-orphans")
-        ssh_run(f"sudo docker compose -f {REMOTE_COMPOSE} up -d")
+        ssh_quiet(f"sudo docker compose -f {REMOTE_COMPOSE} down --remove-orphans")
+        ssh_quiet(f"sudo docker compose -f {REMOTE_COMPOSE} up -d")
 
         # Tripwire: nothing in install-zed adds a default route, and the
         # camera-open assertion below only proves the offline posture if the
@@ -272,13 +272,13 @@ def _strip_to_appliance() -> None:
             "setting_appliance_default_target",
             extra={"from": current_target, "to": APPLIANCE_DEFAULT_TARGET},
         )
-        ssh_run(f"sudo systemctl set-default {APPLIANCE_DEFAULT_TARGET}")
+        ssh_quiet(f"sudo systemctl set-default {APPLIANCE_DEFAULT_TARGET}")
 
     logger.info("masking_appliance_system_units", extra={"count": len(APPLIANCE_SYSTEM_UNITS_TO_MASK)})
-    ssh_run(f"sudo systemctl mask --now {' '.join(APPLIANCE_SYSTEM_UNITS_TO_MASK)}")
+    ssh_quiet(f"sudo systemctl mask --now {' '.join(APPLIANCE_SYSTEM_UNITS_TO_MASK)}")
 
     logger.info("masking_appliance_user_units", extra={"count": len(APPLIANCE_USER_UNITS_TO_MASK)})
-    ssh_run(f"sudo systemctl --global mask {' '.join(APPLIANCE_USER_UNITS_TO_MASK)}")
+    ssh_quiet(f"sudo systemctl --global mask {' '.join(APPLIANCE_USER_UNITS_TO_MASK)}")
 
     for banner_path in APPLIANCE_BANNER_PATHS:
         current = ssh_output(f"cat {banner_path}") if ssh_check(f"test -f {banner_path}") else ""
@@ -286,7 +286,7 @@ def _strip_to_appliance() -> None:
             logger.info("appliance_banner_present", extra={"path": banner_path})
         else:
             logger.info("installing_appliance_banner", extra={"path": banner_path})
-            ssh_run(f"sudo tee {banner_path} > /dev/null", stdin_text=APPLIANCE_BANNER_TEXT)
+            ssh_quiet(f"sudo tee {banner_path} > /dev/null", stdin_text=APPLIANCE_BANNER_TEXT)
 
 
 def _ensure_key_access() -> None:
@@ -319,6 +319,7 @@ def _ensure_box_host_key() -> None:
     # box since the last install from this checkout. Resetting the file is
     # zero-collateral (nothing outside the installer reads it); a mismatch
     # surviving the reset is a state the cable topology cannot produce.
+    logger.info("recording_box_host_key")
     if _box_host_key_matches():
         return
     logger.info("resetting_box_host_key", extra={"path": str(SSH_KNOWN_HOSTS)})
@@ -384,17 +385,17 @@ def _bootstrap_box_access(password: str) -> bool:
         # The rule rides stdin and the same `sudo install` mechanism the
         # refreshing_sudoers_rule step uses — it never passes through a
         # remote shell parse, so SUDOERS_RULE needs no quoting at all.
-        bash(
+        bash_output(
             f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_stage)}",
             stdin_text=f"{SUDOERS_RULE}\n",
             env=askpass_env,
         )
-        bash(
+        bash_output(
             f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_install)}",
             stdin_text=f"{password}\n",
             env=askpass_env,
         )
-        bash(f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_cleanup)}", env=askpass_env)
+        bash_output(f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_cleanup)}", env=askpass_env)
         return True
 
 
@@ -436,13 +437,13 @@ def _acquire_images(
         # layer-aware, so only changed layers cross the cable.
         if not bash_check("docker container inspect registry"):
             logger.info("starting_local_registry", extra={"port": REGISTRY_PORT})
-            bash(
+            bash_output(
                 f"docker run -d -p {REGISTRY_PORT}:{REGISTRY_PORT} --name registry --restart unless-stopped"
                 f" {REGISTRY_IMAGE}"
             )
         elif bash_output('docker inspect -f "{{.State.Running}}" registry').strip() != "true":
             logger.info("restarting_local_registry")
-            bash("docker start registry")
+            bash_output("docker start registry")
 
         local_images = {
             service.name: f"localhost:{REGISTRY_PORT}/{service.name}:{service_shas[service.sha_key]}"
@@ -477,8 +478,8 @@ def _acquire_images(
             registries: list[str] = daemon_config.get("insecure-registries", [])
             registries.append(f"{host_ip}:{REGISTRY_PORT}")
             daemon_config["insecure-registries"] = registries
-            ssh_run("sudo tee /etc/docker/daemon.json", stdin_text=json.dumps(daemon_config, indent=2))
-            ssh_run("sudo systemctl restart docker")
+            ssh_quiet("sudo tee /etc/docker/daemon.json", stdin_text=json.dumps(daemon_config, indent=2))
+            ssh_quiet("sudo systemctl restart docker")
 
         for image in remote_images.values():
             _pull_image_from_registry(image)
@@ -558,8 +559,8 @@ def _seed_camera_calibration() -> None:
 
         bash(f"scp {SSH_OPTIONS} {calibration_path} {BOX_SSH_TARGET}:/tmp/")
 
-    ssh_run(f"sudo install -D -m 0644 -o root -g root /tmp/SN{serial}.conf {ZED_SETTINGS_DIR}/SN{serial}.conf")
-    ssh_run(f"rm /tmp/SN{serial}.conf")
+    ssh_quiet(f"sudo install -D -m 0644 -o root -g root /tmp/SN{serial}.conf {ZED_SETTINGS_DIR}/SN{serial}.conf")
+    ssh_quiet(f"rm /tmp/SN{serial}.conf")
     logger.info("camera_calibration_seeded", extra={"serial": serial})
 
 

@@ -15,3 +15,7 @@ def ssh_check(command: str) -> bool:
 
 def ssh_output(command: str) -> str:
     return bash_output(f"ssh {SSH_OPTIONS} {BOX_SSH_TARGET} {shlex.quote(command)}")
+
+
+def ssh_quiet(command: str, stdin_text: str | None = None) -> None:
+    bash_output(f"ssh {SSH_OPTIONS} {BOX_SSH_TARGET} {shlex.quote(command)}", stdin_text=stdin_text)

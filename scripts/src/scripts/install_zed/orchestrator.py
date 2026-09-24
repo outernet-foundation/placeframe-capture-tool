@@ -5,7 +5,7 @@ import typer
 from docker_devkit.context_sha import compute_service_shas
 from docker_devkit.documents import parse_bake
 from docker_devkit.modes import parse_env_file
-from bashrun.bash import bash
+from bashrun.bash import bash_output
 from placeframe_common.logging_config import configure_logging
 
 from .box_install import install_box
@@ -39,6 +39,6 @@ def main(
     SSH_KNOWN_HOSTS.touch(exist_ok=True)
     if not SSH_KEY.exists():
         logger.info("generating_ssh_key", extra={"path": str(SSH_KEY)})
-        bash(f'ssh-keygen -t ed25519 -N "" -f {SSH_KEY}')
+        bash_output(f'ssh-keygen -t ed25519 -N "" -f {SSH_KEY}')
 
     install_box(build, service_shas, env_lock)
