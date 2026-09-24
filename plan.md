@@ -429,7 +429,7 @@ assertion) carries over unchanged. The factory box currently on the operator's b
       `BOX_UNREACHABLE` that names the one-time ethernet escape for pre-pivot boxes
       (§7 micro-B migration). ruff, basedpyright, and pytest green. Bench
       confirmation rides 7.4.
-- [ ] 7.3 Docs (commit: `Document micro-B installs; retire the ethernet spine`):
+- [x] 7.3 Docs (commit: `Document micro-B installs; retire the ethernet spine`):
       README quick start (the cable ships in the box, zero host configuration, delete
       the APIPA-latency paragraph), `scripts/AGENTS.md` (delete spine/discovery/APIPA
       timing sections; add the gadget section incl. `--build`-over-USB2 iteration
@@ -439,6 +439,13 @@ assertion) carries over unchanged. The factory box currently on the operator's b
       example → gadget address (§8 follow-up); delete `migrate-zed-box.sh` +
       `diagnose-zed-box.sh` once the operator's laptop cleanup is confirmed (until
       then the migrate script's host-cleanup half remains the operator's tool).
+      Landed 2026-09-23: README, `scripts/AGENTS.md` (both constraint bullets
+      replaced by the gadget-transport + probe/bootstrap bullets; device-mode bullet
+      inverted; sandbox debugging note rekeyed to 192.168.55.1/RFC1918),
+      `docker/zed-capture/AGENTS.md` (networking section rewritten, port map fixed),
+      `docker/aoa-bridge/AGENTS.md` (ssh example rekeyed; micro-B no longer "unused").
+      Root `AGENTS.md` verified accurate as-is. migrate/diagnose scripts kept pending
+      laptop-cleanup confirmation, per the item.
 - [ ] 7.4 Bench validation (P6 reshaped; no repo commits beyond checkbox flips):
       virgin-box install with **no ethernet cable attached at all** (micro-B only):
       stack healthy, box-Loki queryable on-box, phone AOA link + log drain functional
