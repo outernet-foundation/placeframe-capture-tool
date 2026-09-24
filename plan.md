@@ -208,6 +208,33 @@ warmup can't download anything even if the SDK tries — that is the point.
   no address for minutes (carrier up, no connection). The "host half resolved by docs"
   claim for open item 2 is disproven by observation — real hosts may never self-assign.
   This, plus the public-kit goal, is the root cause of the P7 transport pivot.
+- **Stock L4T gadget behavior resolved by research** (2026-09-23, for 7.1a):
+  `nv-l4t-usb-device-mode.service` runs the scripts under
+  `/opt/nvidia/l4t-usb-device-mode/`, which build a configfs composite gadget —
+  CDC-network (`usb0`), ACM serial (`GS0`), mass-storage (`L4T-README`) — bridged on
+  `l4tbr0` at the stock `192.168.55.1/24`, with dnsmasq serving DHCP (~`.100+`) to the
+  host. The address/mask/pool live in `nv-l4t-usb-device-mode-config.sh`; the setup is
+  persistent across boots by design (enabled service, config files on disk). A Linux
+  host needs zero configuration: the CDC NIC enumerates driverless and NM auto-DHCPs
+  against the box. Residual bench unknown: rel-36 is strict about custom-carrier
+  device trees (device mode can be dead on a mis-configured vendor board) — mitigated
+  by Stereolabs documenting the micro-B port for flashing/serial-console use and by the
+  pre-pivot installer's own disable step implying the service ran on this image.
+  Confirmation is one plug-in, folded into 7.4.
+- **Gadget subnet rekey is moot — stock config kept** (2026-09-23). The 7.1a rekey
+  rationale ("non-RFC1918 preserves sandbox-originated deploys") is contradicted by this
+  section's own coi probe: restricted mode rejects `100.64.0.0/10` exactly like RFC1918,
+  so sandbox→box needs the §7-style rule pair regardless of subnet. Stock
+  `192.168.55.1` therefore wins on every axis: deterministic first contact on a virgin
+  box, zero gadget surgery, config persistence for free. The CDC-function re-author
+  (NCM/ECM pick) is likewise unneeded — the stock composite enumerates driverless on
+  the Linux hosts that run deploys; a Windows/macOS story would be a public-kit
+  follow-up, not an installer concern.
+- **7.1b resolved by operator bench fact** (2026-09-23): the phone AOA link runs on
+  the Type-A port in daily use; the micro-B port has never been used. The STOP
+  condition (AOA needing micro-B) is dead — gadget and AOA occupy different ports and
+  controllers by construction. The un-observed half (gadget enabled *while* AOA
+  active) is a formality riding 7.4.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
@@ -358,8 +385,16 @@ appliance strip, save|gzip|ssh load shipping, calibration seeding, offline-open
 assertion) carries over unchanged. The factory box currently on the operator's bench
 (the one that exposed the host-APIPA failure, §4) is the 7.1 subject.
 
-- [ ] 7.1 Bench gate on the physical box (operator; no repo commits; record in §4;
+- [x] 7.1 Bench gate on the physical box (operator; no repo commits; record in §4;
       items gate their phases).
+      Resolved 2026-09-23 without the bench: (a) stock gadget behavior resolved by
+      research + the rekey/CDC decisions mooted and closed as *stock config kept*
+      (§4); the device-tree-on-custom-carrier residual and the link-bring-up timing
+      reduce to one plug-in at 7.4. (b) resolved by operator bench fact — AOA rides
+      Type-A daily, micro-B unused, STOP condition dead (§4). (c) reduced to
+      confirmation at 7.4: the gadget address is deterministic (192.168.55.1), creds
+      are the documented factory pair, timing is seconds-scale per research.
+      Original items preserved below for reference.
       a. Stock JP6.1 micro-B gadget behavior: what `nv-l4t-usb-device-mode.service`
       actually brings up on the Mini (serial only / mass-storage / CDC `usb0`
       @192.168.55.1) and what a laptop sees. Decide the gadget config we persist:
@@ -449,6 +484,20 @@ sudo nmcli con delete zedbox-migrate
 
 Then the new installer reaches the box at `169.254.0.1` forever.
 
+### Micro-B migration for a previously-installed box (operator, once per box)
+
+A box that completed a pre-pivot install has `nv-l4t-usb-device-mode.service`
+disabled — the old appliance-strip step — and is therefore unreachable over micro-B
+until the service is re-enabled, which cannot happen over the micro-B link itself.
+Reach the box once over ethernet (its factory DHCP state, or the LAN it sits on) and:
+
+```bash
+ssh user@<box-ethernet-address> 'sudo systemctl enable --now nv-l4t-usb-device-mode.service'
+```
+
+After that the micro-B path is permanent. The 7.2 code's `enable --now` keeps it
+that way on every later install (idempotent — it never bounces a live link).
+
 ### Sandbox→box plumbing (operator, once per host, only if agent-driven deploys are wanted)
 
 ```bash
@@ -520,3 +569,10 @@ worth a coi bug report either way — see §8).
   state. Type-A stays the AOA phone port. Supersedes the §1 link-local spine ruling;
   P6 folds into P7. A dual-transport option was considered and rejected on
   carrying-cost grounds (~120 lines plus the NM/APIPA failure family forever).
+- **Gadget config = stock, untouched** (2026-09-23, closes the 7.1a operator pick):
+  the rekey rationale died on §4's own coi probe (100.64.0.0/10 rejected like RFC1918
+  — the sandbox-deploy option needs the rule pair regardless of subnet), so stock
+  192.168.55.1/24 with the stock composite (CDC net + ACM serial + mass-storage) wins
+  on determinism, zero gadget surgery, and free persistence. install-zed's only gadget
+  action is `systemctl enable --now`. No NCM/ECM re-author while deploys run on Linux
+  hosts.
