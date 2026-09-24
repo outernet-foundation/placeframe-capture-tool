@@ -17,7 +17,6 @@ from .constants import (
     SSH_KEY,
     SSH_KNOWN_HOSTS,
     SSH_STATE_DIR,
-    ZED_STOCK_IMAGES,
 )
 
 logger = getLogger(__name__)
@@ -35,7 +34,6 @@ def main(
     logger.info("starting_install", extra={"target": BOX_SSH_TARGET, "build": build})
     service_shas = compute_service_shas(REPO_ROOT, parse_bake(BAKE_FILE))
     env_lock = parse_env_file(ENV_LOCK_FILE)
-    stock_images = {image.image_env: env_lock[image.image_env] for image in ZED_STOCK_IMAGES}
 
     SSH_STATE_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
     SSH_KNOWN_HOSTS.touch(exist_ok=True)
@@ -43,4 +41,4 @@ def main(
         logger.info("generating_ssh_key", extra={"path": str(SSH_KEY)})
         bash(f'ssh-keygen -t ed25519 -N "" -f {SSH_KEY}')
 
-    install_box(build, service_shas, stock_images)
+    install_box(build, service_shas, env_lock)

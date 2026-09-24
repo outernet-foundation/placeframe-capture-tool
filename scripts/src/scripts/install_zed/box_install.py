@@ -73,7 +73,7 @@ logger = getLogger(__name__)
 FACTORY_LOGIN = "admin"
 
 
-def install_box(build: bool, service_shas: dict[str, str], stock_images: dict[str, str]) -> None:
+def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, str]) -> None:
     # Fail before touching the box if the host can't actually cross-build the
     # arm64 images — otherwise the missing prerequisite only surfaces as an
     # opaque `exec format error` mid-build, after the box has been reconfigured.
@@ -160,7 +160,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_images: dict[st
         # (default), or cross-compile via the local registry (--build). The
         # stock observability images are never built locally — digest-pinned
         # mirror pulls shipped from the host in both modes.
-        images = _acquire_images(host_ip, build, service_shas, stock_images)
+        images = _acquire_images(host_ip, build, service_shas, env_lock)
 
         # Ship the compose file and supporting scripts. The aoa-alloy /
         # aoa-loki configs ship as files beside the compose file and mount
@@ -182,6 +182,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_images: dict[st
         # also feeds SERVICE_VERSION) + the stock-image pins + box
         # hardware id for log tagging.
         box_shas = {service.sha_key: service_shas[service.sha_key] for service in ZED_SERVICES}
+        stock_images = {image.image_env: env_lock[image.image_env] for image in ZED_STOCK_IMAGES}
         env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas, **stock_images}.items())
         ssh_run(f"tee {REMOTE_DIR}/.env", stdin_text=env_lines + f"ZED_BOX_ID={box_id}\n")
 
@@ -417,9 +418,9 @@ def _ensure_arm64_emulation() -> None:
 
 
 def _acquire_images(
-    host_ip: str, build: bool, service_shas: dict[str, str], stock_images: dict[str, str]
+    host_ip: str, build: bool, service_shas: dict[str, str], env_lock: dict[str, str]
 ) -> dict[str, str]:
-    stock_references = [stock_images[image.image_env] for image in ZED_STOCK_IMAGES]
+    stock_references = [env_lock[image.image_env] for image in ZED_STOCK_IMAGES]
 
     if not build:
         images = {
@@ -453,7 +454,10 @@ def _acquire_images(
         }
 
         logger.info("cross_compiling_images", extra={"bake_file": str(BAKE_FILE)})
-        env_prefix = " ".join(f"{k}={v}" for k, v in service_shas.items())
+        # Mirrors docker-devkit's build verb: the bake env carries the service
+        # SHAs plus the full .env.lock — the Dockerfiles' base-image ARGs have
+        # no defaults, so a missing key is a hard bake error, not a fallback.
+        env_prefix = " ".join(f"{k}={v}" for k, v in {**service_shas, **env_lock}.items())
         set_flags = " ".join(f"--set {service.name}.tags={local_images[service.name]}" for service in ZED_SERVICES)
         bake_targets = " ".join(service.name for service in ZED_SERVICES)
         bash(
