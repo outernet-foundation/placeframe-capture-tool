@@ -27,7 +27,7 @@
   "dependencies": {
     "com.cysharp.r3": "1.2.9",
     "com.cysharp.unitask": "2.5.11",
-    "com.fofx.nessle": "1.0.0",
+    "com.fofx.nessle": "https://github.com/outernet-foundation/Nessle.git?path=Assets/Package/Core#bbfc1f570e060a2332cfac5b4d897fdfbba404f5",
     "com.fofx.observething": "1.0.0",
     "com.fofx.stateful": "1.0.0",
     "com.github-glitchenzo.nugetforunity": "4.5.0",

@@ -17,7 +17,7 @@
       "hash": "2e993ff18f28c931602a07292df0b0804eebef99"
     },
     "com.fofx.nessle": {
-      "version": "https://github.com/outernet-foundation/Nessle.git?path=Assets/Package/Core",
+      "version": "https://github.com/outernet-foundation/Nessle.git?path=Assets/Package/Core#bbfc1f570e060a2332cfac5b4d897fdfbba404f5",
       "depth": 0,
       "source": "git",
       "dependencies": {
