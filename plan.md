@@ -248,6 +248,17 @@ warmup can't download anything even if the SDK tries — that is the point.
   the first-contact bootstrap now returns "password rejected" only on a genuine
   `Permission denied` (transport failures raise with the real ssh error).
   Installer is 773 lines across the package (from 845 pre-audit).
+- **First `--build` bench run (2026-09-24) exposed env-forwarding rot in the
+  local bake**: the hand-rolled invocation forwarded only the three `*_SHA`
+  vars, never the base-image pins — harmless before dev's `_IMAGE` rekey
+  (`FROM …/caddy${CADDY_DIGEST}` with a blank suffix still named a valid,
+  silently unpinned tag) and a hard `base name should not be blank` error
+  after it. Fixed by feeding the full parsed `.env.lock` into the bake env,
+  byte-for-byte docker-devkit's build-verb behavior (`os.environ.update` of
+  SHAs + lock). The same run proved the repo-scoped ssh machinery end-to-end
+  on first contact (key gen → probe → TOFU record → askpass factory-login
+  bootstrap → mux → `sudo -n`), and left the box partially configured with
+  idempotent steps — re-run resumes.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
@@ -626,3 +637,14 @@ worth a coi bug report either way — see §8).
   L4T gadget answers at the same address, so churn on box swap or reflash is
   expected, not suspicious). Supersedes the personal-key design
   (`~/.ssh/id_ed25519`).
+- **Quiet-on-success installer output** (operator ruling 2026-09-24, after the
+  first install's log interleaved unlabeled ssh/docker/systemctl chatter with
+  structured log lines): seconds-scale steps run captured and print nothing on
+  success, everything on failure (`ssh_quiet` / `bash_output` — bashrun prints
+  captured stderr before raising); minutes-scale steps keep live passthrough
+  (bake, docker pulls, the save|gzip|ssh load pipeline, scp, the camera-open
+  assertion — its output is the diagnostic). ssh runs at `LogLevel=ERROR` (the
+  installer owns its known_hosts; "Permanently added" noise is meaningless at
+  a deterministic cable address), and the first-contact probe pre-announces
+  itself with a log line so the expected virgin-key `Permission denied` reads
+  as designed.
