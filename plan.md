@@ -412,7 +412,7 @@ assertion) carries over unchanged. The factory box currently on the operator's b
       c. First contact over micro-B from the laptop: host NIC appears, host gets an
       address from the box, `ssh user@<gadget-ip>` succeeds with factory creds; time
       the link bring-up.
-- [ ] 7.2 Code (commit: `Pivot install transport to the micro-B gadget port`):
+- [x] 7.2 Code (commit: `Pivot install transport to the micro-B gadget port`):
       constants rekey (gadget address → `BOX_SSH_TARGET`, seconds-scale probe window);
       `_box_reachable_at_static_ip` → gadget-address probe (loop shape unchanged);
       ethernet discovery deleted wholesale — `_claim_box_via_apipa`,
@@ -423,6 +423,12 @@ assertion) carries over unchanged. The factory box currently on the operator's b
       with the 7.1a gadget configure-and-persist; `--build` registry path unchanged
       (`host_ip` = `$SSH_CLIENT` over `usb0`); keep the no-default-route tripwire and
       the offline camera-open assertion; ruff + basedpyright green.
+      Landed 2026-09-23: 43 insertions / 198 deletions across the three modules; the
+      gadget configure-and-persist collapsed to `systemctl enable --now` (stock config
+      ruling, §9) with the four discovery-era messages replaced by one
+      `BOX_UNREACHABLE` that names the one-time ethernet escape for pre-pivot boxes
+      (§7 micro-B migration). ruff, basedpyright, and pytest green. Bench
+      confirmation rides 7.4.
 - [ ] 7.3 Docs (commit: `Document micro-B installs; retire the ethernet spine`):
       README quick start (the cable ships in the box, zero host configuration, delete
       the APIPA-latency paragraph), `scripts/AGENTS.md` (delete spine/discovery/APIPA
