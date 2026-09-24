@@ -235,9 +235,13 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # end-to-end. Failure is fatal — the propagated SDK error is the
         # diagnostic — rather than deferring a broken rig to first capture.
         logger.info("verifying_offline_camera_open")
+        # pyzed's open() returns an error code instead of raising, so the
+        # exit status is the assertion and the SDK's stderr diagnostics ride
+        # along with the failure.
         ssh_run(
             f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
-            '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); c.open(p); c.close()"'
+            '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); '
+            'e = c.open(p); c.close(); raise SystemExit(0 if e == sl.ERROR_CODE.SUCCESS else 1)"'
         )
 
         logger.info("install_done")
