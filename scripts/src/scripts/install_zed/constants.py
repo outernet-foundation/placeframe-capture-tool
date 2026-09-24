@@ -99,7 +99,7 @@ BOX_REACHABLE_PROBE_SECONDS = 30
 
 SUDOERS_RULE = (
     "user ALL=(ALL) NOPASSWD: /usr/bin/dpkg, /usr/sbin/usermod, /usr/bin/nvidia-ctk,"
-    " /usr/bin/systemctl, /usr/bin/docker, /usr/bin/tee, /usr/bin/nmcli, /usr/bin/install"
+    " /usr/bin/systemctl, /usr/bin/docker, /usr/bin/tee, /usr/bin/install"
 )
 
 # Brings the micro-B OTG port up as the CDC-ethernet gadget the install
