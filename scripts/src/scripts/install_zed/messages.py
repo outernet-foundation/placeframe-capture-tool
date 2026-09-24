@@ -56,9 +56,9 @@ offline is not installed."""
 BOX_LOGIN_PROMPT = "box login password (installs the install-zed SSH key and the passwordless sudo rule)"
 
 FACTORY_LOGIN_REJECTED = """\
-Factory password rejected for {target}: this box's `user` password is not the
-Stereolabs factory default. The next prompt takes the box login password to
-retry the first-contact bootstrap."""
+Factory password rejected: this box's `user` password is not the Stereolabs
+factory default. The next prompt takes the box login password to retry the
+first-contact bootstrap."""
 
 BOX_UNREACHABLE = """\
 The box never answered at {box_ip} within {timeout_seconds}s. Check the

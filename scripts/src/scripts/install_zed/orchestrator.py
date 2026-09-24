@@ -27,9 +27,7 @@ def main(
     env_lock = parse_env_file(ENV_LOCK_FILE)
     stock_digests = {image.digest_env: env_lock[image.digest_env] for image in ZED_STOCK_IMAGES}
 
-    if SSH_KEY.exists():
-        logger.info("ssh_key_exists", extra={"path": str(SSH_KEY)})
-    else:
+    if not SSH_KEY.exists():
         logger.info("generating_ssh_key", extra={"path": str(SSH_KEY)})
         SSH_KEY.parent.mkdir(parents=True, exist_ok=True)
         bash(f'ssh-keygen -t ed25519 -N "" -f {SSH_KEY}')

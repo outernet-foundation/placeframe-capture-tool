@@ -84,10 +84,13 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
     # The gadget address is deterministic, so reachability needs no discovery:
     # wait out gadget link bring-up (driver bind, NM activation, DHCP served by
     # the box), then bootstrap key access if this is a virgin box.
-    if not _box_reachable_at_gadget_address():
-        typer.echo(BOX_UNREACHABLE.format(box_ip=BOX_IP, timeout_seconds=BOX_REACHABLE_PROBE_SECONDS), err=True)
-        raise SystemExit(1)
-    _ensure_key_access(BOX_SSH_TARGET)
+    logger.info("probing_box_reachability", extra={"box_ip": BOX_IP, "timeout_seconds": BOX_REACHABLE_PROBE_SECONDS})
+    deadline = time.monotonic() + BOX_REACHABLE_PROBE_SECONDS
+    while not _ssh_port_open(BOX_IP):
+        if time.monotonic() >= deadline:
+            _abort(BOX_UNREACHABLE.format(box_ip=BOX_IP, timeout_seconds=BOX_REACHABLE_PROBE_SECONDS))
+        time.sleep(1)
+    _ensure_key_access()
 
     # Open one SSH connection and reuse it for every command below.
     logger.info("connecting_to_box", extra={"target": BOX_SSH_TARGET})
@@ -98,14 +101,13 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         # idempotent; no content-comparison check is needed. The `-n` flag
         # fails loudly instead of prompting if NOPASSWD isn't in effect,
         # which surfaces a stale or missing rule as a script-fatal error
-        # rather than silently degrading to interactive.
+        # rather than silently degrading to interactive. On an already-
+        # bootstrapped box this step's real job is propagating SUDOERS_RULE
+        # evolution across installer versions.
         logger.info("refreshing_sudoers_rule")
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".sudoers") as sudoers_file:
-            sudoers_file.write(SUDOERS_RULE + "\n")
-            sudoers_file.flush()
-            bash(f"scp {SSH_MUX} {sudoers_file.name} {BOX_SSH_TARGET}:/tmp/install-zed.sudoers")
-            ssh_run("sudo -n install -m 0440 -o root -g root /tmp/install-zed.sudoers /etc/sudoers.d/install-zed")
-            ssh_run("rm /tmp/install-zed.sudoers")
+        ssh_run("cat > /tmp/install-zed.sudoers", stdin_text=SUDOERS_RULE + "\n")
+        ssh_run("sudo -n install -m 0440 -o root -g root /tmp/install-zed.sudoers /etc/sudoers.d/install-zed")
+        ssh_run("rm /tmp/install-zed.sudoers")
 
         # Install Docker from pinned .deb URLs (Ubuntu's repo is a moving target).
         if ssh_check("which docker"):
@@ -117,8 +119,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
                 for deb_file in DOCKER_DEBS:
                     bash(f"curl -fsSL -o {temp_directory}/{deb_file} {DOCKER_DEB_BASE}/{deb_file}")
                 logger.info("transferring_docker_packages", extra={"target": BOX_SSH_TARGET})
-                for deb_file in DOCKER_DEBS:
-                    bash(f"scp {SSH_MUX} {temp_directory}/{deb_file} {BOX_SSH_TARGET}:/tmp/{deb_file}")
+                bash(f"scp {SSH_MUX} {temp_directory}/*.deb {BOX_SSH_TARGET}:/tmp/")
             deb_paths = " ".join(f"/tmp/{deb_file}" for deb_file in DOCKER_DEBS)
             box_user = BOX_SSH_TARGET.split("@")[0]
             ssh_run(f"sudo dpkg -i {deb_paths}")
@@ -175,8 +176,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         # Jetson hardware-burned serial survives OS reflashes.
         box_id = ssh_output("tr -d '\\0\\n' < /proc/device-tree/serial-number").strip()
         if not box_id:
-            typer.echo(BOX_ID_UNRESOLVABLE, err=True)
-            raise SystemExit(1)
+            _abort(BOX_ID_UNRESOLVABLE)
 
         # Write the .env that compose reads: built-image refs + every SHA-keyed
         # variable compose.rig.yml references (one per box image; ZED_CAPTURE_SHA
@@ -189,8 +189,8 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         # Install the systemd unit so the stack auto-starts on boot.
         logger.info("installing_systemd_unit", extra={"unit": "placeframe-zed.service"})
         remote_home = ssh_output("echo $HOME").strip()
-        remote_compose_abs = f"{remote_home}/.placeframe/compose.rig.yml"
-        remote_wait_for_zed_camera_abs = f"{remote_home}/.placeframe/wait_for_zed_camera.py"
+        remote_compose_abs = REMOTE_COMPOSE.replace("~", remote_home)
+        remote_wait_for_zed_camera_abs = REMOTE_WAIT_FOR_ZED_CAMERA.replace("~", remote_home)
         unit_content = (
             SYSTEMD_UNIT_SOURCE
             .read_text()
@@ -220,8 +220,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
         # camera-open assertion below only proves the offline posture if the
         # box actually is offline.
         if ssh_output("ip route show default").strip():
-            typer.echo(BOX_HAS_DEFAULT_ROUTE, err=True)
-            raise SystemExit(1)
+            _abort(BOX_HAS_DEFAULT_ROUTE)
 
         # Offline camera-open assertion. With the seeded calibration, the
         # baked .isp profiles, and ZED_SDK_DISABLE_DOWNLOAD there is no
@@ -236,8 +235,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_digests: dict[s
                     '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); c.open(p); c.close()"'
                 )
             except CalledProcessError:
-                typer.echo(CAMERA_OPEN_FAILED, err=True)
-                raise SystemExit(1)
+                _abort(CAMERA_OPEN_FAILED)
 
         logger.info("install_done")
     finally:
@@ -295,20 +293,7 @@ def _strip_to_appliance() -> None:
             ssh_run(f"sudo tee {banner_path} > /dev/null", stdin_text=APPLIANCE_BANNER_TEXT)
 
 
-def _box_reachable_at_gadget_address() -> bool:
-    logger.info("probing_box_reachability", extra={"box_ip": BOX_IP, "timeout_seconds": BOX_REACHABLE_PROBE_SECONDS})
-    deadline = time.monotonic() + BOX_REACHABLE_PROBE_SECONDS
-    while True:
-        if _ssh_port_open(BOX_IP):
-            return True
-
-        if time.monotonic() >= deadline:
-            return False
-
-        time.sleep(1)
-
-
-def _ensure_key_access(target: str) -> None:
+def _ensure_key_access() -> None:
     # First-contact bootstrap. A virgin box has neither our SSH key nor
     # passwordless sudo, and the steps that would install them (the `sudo -S`
     # bootstrap below, the `sudo -n` rule refresh in install_box) both run
@@ -320,16 +305,16 @@ def _ensure_key_access(target: str) -> None:
     # with a command from SUDOERS_RULE's own list: `sudo -n true` would be
     # denied even on a bootstrapped box (`true` is not in the rule), so a
     # listed no-op is the honest dormancy probe.
-    if bash_check(f"ssh -o BatchMode=yes -o ConnectTimeout=5 {target} sudo -n systemctl --version"):
+    if bash_check(f"ssh -o BatchMode=yes -o ConnectTimeout=5 {BOX_SSH_TARGET} sudo -n systemctl --version"):
         return
 
-    if not _bootstrap_box_access(target, FACTORY_LOGIN):
-        typer.echo(FACTORY_LOGIN_REJECTED.format(target=target), err=True)
+    if not _bootstrap_box_access(FACTORY_LOGIN):
+        typer.echo(FACTORY_LOGIN_REJECTED, err=True)
         password: str = typer.prompt(BOX_LOGIN_PROMPT, hide_input=True)
-        _bootstrap_box_access(target, password)
+        _bootstrap_box_access(password)
 
 
-def _bootstrap_box_access(target: str, password: str) -> bool:
+def _bootstrap_box_access(password: str) -> bool:
     # The password rides env -> SSH_ASKPASS helper -> ssh's password prompt,
     # never a command line (bashrun logs commands, not stdin/env) and only over
     # the encrypted channel. SSH_ASKPASS_REQUIRE=force (OpenSSH >= 8.4) makes
@@ -358,7 +343,7 @@ def _bootstrap_box_access(target: str, password: str) -> bool:
         sudoers_cleanup = "rm /tmp/install-zed.sudoers"
         try:
             bash(
-                f"ssh {auth_options} {target} {shlex.quote(key_command)}",
+                f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(key_command)}",
                 stdin_text=public_key,
                 env=askpass_env,
             )
@@ -366,16 +351,16 @@ def _bootstrap_box_access(target: str, password: str) -> bool:
             # refreshing_sudoers_rule step uses — it never passes through a
             # remote shell parse, so SUDOERS_RULE needs no quoting at all.
             bash(
-                f"ssh {auth_options} {target} {shlex.quote(sudoers_stage)}",
+                f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_stage)}",
                 stdin_text=f"{SUDOERS_RULE}\n",
                 env=askpass_env,
             )
             bash(
-                f"ssh {auth_options} {target} {shlex.quote(sudoers_install)}",
+                f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_install)}",
                 stdin_text=f"{password}\n",
                 env=askpass_env,
             )
-            bash(f"ssh {auth_options} {target} {shlex.quote(sudoers_cleanup)}", env=askpass_env)
+            bash(f"ssh {auth_options} {BOX_SSH_TARGET} {shlex.quote(sudoers_cleanup)}", env=askpass_env)
         except CalledProcessError:
             return False
 
@@ -398,8 +383,7 @@ def _ensure_arm64_emulation() -> None:
     if handler.exists() and handler.read_text().startswith("enabled"):
         return
 
-    typer.echo(ARM64_EMULATION_MISSING, err=True)
-    raise SystemExit(1)
+    _abort(ARM64_EMULATION_MISSING)
 
 
 def _acquire_images(
@@ -412,70 +396,69 @@ def _acquire_images(
             service.image_env: f"{GHCR_BASE}/{service.name}:{service_shas[service.sha_key]}" for service in ZED_SERVICES
         }
         # The tree-SHA tags are single-platform arm64 manifests, so a plain
-        # pull on the amd64 host errors with no matching manifest. The stock
-        # refs are per-arch digests — platform-unambiguous without a flag.
+        # pull on the amd64 host errors with no matching manifest.
         for image in images.values():
             _pull_image_on_host(image, "linux/arm64")
-        for image in stock_references:
-            _pull_image_on_host(image)
-        _ship_images_to_box(list(images.values()), stock_references)
-        return images
+        first_party_to_ship = list(images.values())
+    else:
+        # The local registry keeps first-party iteration cheap: pulls are
+        # layer-aware, so only changed layers cross the cable.
+        if not bash_check("docker container inspect registry"):
+            logger.info("starting_local_registry", extra={"port": REGISTRY_PORT})
+            bash(
+                f"docker run -d -p {REGISTRY_PORT}:{REGISTRY_PORT} --name registry --restart unless-stopped"
+                f" {REGISTRY_IMAGE}"
+            )
+        elif bash_output('docker inspect -f "{{.State.Running}}" registry').strip() != "true":
+            logger.info("restarting_local_registry")
+            bash("docker start registry")
 
-    # The local registry keeps first-party iteration cheap: pulls are
-    # layer-aware, so only changed layers cross the cable. The stock
-    # observability images have no iteration loop and ship by tarball below.
-    if not bash_check("docker container inspect registry"):
-        logger.info("starting_local_registry", extra={"port": REGISTRY_PORT})
+        local_images = {
+            service.name: f"localhost:{REGISTRY_PORT}/{service.name}:{service_shas[service.sha_key]}"
+            for service in ZED_SERVICES
+        }
+        remote_images = {
+            service.image_env: f"{host_ip}:{REGISTRY_PORT}/{service.name}:{service_shas[service.sha_key]}"
+            for service in ZED_SERVICES
+        }
+
+        logger.info("cross_compiling_images", extra={"bake_file": str(BAKE_FILE)})
+        env_prefix = " ".join(f"{k}={v}" for k, v in service_shas.items())
+        set_flags = " ".join(f"--set {service.name}.tags={local_images[service.name]}" for service in ZED_SERVICES)
+        bake_targets = " ".join(service.name for service in ZED_SERVICES)
         bash(
-            f"docker run -d -p {REGISTRY_PORT}:{REGISTRY_PORT} --name registry --restart unless-stopped"
-            f" {REGISTRY_IMAGE}"
+            f"env {env_prefix} docker buildx bake -f {BAKE_FILE} {set_flags}"
+            f" --push --provenance=false --sbom=false {bake_targets}",
         )
-    elif bash_output('docker inspect -f "{{.State.Running}}" registry').strip() == "true":
-        logger.info("local_registry_already_running")
-    else:
-        logger.info("restarting_local_registry")
-        bash("docker start registry")
 
-    local_images = {
-        service.name: f"localhost:{REGISTRY_PORT}/{service.name}:{service_shas[service.sha_key]}"
-        for service in ZED_SERVICES
-    }
-    remote_images = {
-        service.image_env: f"{host_ip}:{REGISTRY_PORT}/{service.name}:{service_shas[service.sha_key]}"
-        for service in ZED_SERVICES
-    }
+        # Docker treats `localhost` as insecure-by-default for push; the box's
+        # daemon needs the box-facing host IP in its insecure-registries. The
+        # host's gadget-side DHCP address churns across plugs; the presence check
+        # re-runs on every install and appends the current one.
+        if ssh_check(f"grep -q {host_ip}:{REGISTRY_PORT} /etc/docker/daemon.json"):
+            logger.info("box_insecure_registry_present", extra={"registry": f"{host_ip}:{REGISTRY_PORT}"})
+        else:
+            logger.info("configuring_box_insecure_registry", extra={"registry": f"{host_ip}:{REGISTRY_PORT}"})
+            daemon_config = json.loads(ssh_output("cat /etc/docker/daemon.json").strip())
+            registries: list[str] = daemon_config.get("insecure-registries", [])
+            registries.append(f"{host_ip}:{REGISTRY_PORT}")
+            daemon_config["insecure-registries"] = registries
+            ssh_run("sudo tee /etc/docker/daemon.json", stdin_text=json.dumps(daemon_config, indent=2))
+            ssh_run("sudo systemctl restart docker")
 
-    logger.info("cross_compiling_images", extra={"bake_file": str(BAKE_FILE)})
-    env_prefix = " ".join(f"{k}={v}" for k, v in service_shas.items())
-    set_flags = " ".join(f"--set {service.name}.tags={local_images[service.name]}" for service in ZED_SERVICES)
-    bake_targets = " ".join(service.name for service in ZED_SERVICES)
-    bash(
-        f"env {env_prefix} docker buildx bake -f {BAKE_FILE} {set_flags}"
-        f" --push --provenance=false --sbom=false {bake_targets}",
-    )
+        for image in remote_images.values():
+            _pull_image_from_registry(image)
 
-    # Docker treats `localhost` as insecure-by-default for push; the box's
-    # daemon needs the box-facing host IP in its insecure-registries. The
-    # host's gadget-side DHCP address churns across plugs; the presence check
-    # re-runs on every install and appends the current one.
-    if ssh_check(f"grep -q {host_ip}:{REGISTRY_PORT} /etc/docker/daemon.json"):
-        logger.info("box_insecure_registry_present", extra={"registry": f"{host_ip}:{REGISTRY_PORT}"})
-    else:
-        logger.info("configuring_box_insecure_registry", extra={"registry": f"{host_ip}:{REGISTRY_PORT}"})
-        daemon_config = json.loads(ssh_output("cat /etc/docker/daemon.json").strip())
-        registries: list[str] = daemon_config.get("insecure-registries", [])
-        registries.append(f"{host_ip}:{REGISTRY_PORT}")
-        daemon_config["insecure-registries"] = registries
-        ssh_run("sudo tee /etc/docker/daemon.json", stdin_text=json.dumps(daemon_config, indent=2))
-        ssh_run("sudo systemctl restart docker")
+        images = remote_images
+        first_party_to_ship = []
 
-    for image in remote_images.values():
-        _pull_image_from_registry(image)
-
+    # The stock observability images are never built locally; their per-arch
+    # digest refs are platform-unambiguous without a flag, and they ship by
+    # tarball in both modes.
     for image in stock_references:
         _pull_image_on_host(image)
-    _ship_images_to_box([], stock_references)
-    return remote_images
+    _ship_images_to_box(first_party_to_ship, stock_references)
+    return images
 
 
 def _pull_image_on_host(reference: str, platform: str | None = None) -> None:
@@ -484,8 +467,7 @@ def _pull_image_on_host(reference: str, platform: str | None = None) -> None:
     try:
         bash(f"docker pull {platform_option}{reference}")
     except CalledProcessError:
-        typer.echo(IMAGE_PULL_FAILED.format(image=reference), err=True)
-        raise SystemExit(1)
+        _abort(IMAGE_PULL_FAILED.format(image=reference))
 
 
 def _ship_images_to_box(tagged_references: list[str], digest_references: list[str]) -> None:
@@ -509,8 +491,7 @@ def _ship_images_to_box(tagged_references: list[str], digest_references: list[st
     # load, compose has no fallback, so the failure must surface now.
     for reference in [*tagged_references, *digest_references]:
         if not ssh_check(f"sudo docker image inspect {reference}"):
-            typer.echo(IMAGE_UNRESOLVED_ON_BOX.format(image=reference), err=True)
-            raise SystemExit(1)
+            _abort(IMAGE_UNRESOLVED_ON_BOX.format(image=reference))
 
 
 def _pull_image_from_registry(image: str) -> None:
@@ -518,8 +499,7 @@ def _pull_image_from_registry(image: str) -> None:
     try:
         ssh_run(f"sudo docker pull {image}")
     except CalledProcessError:
-        typer.echo(REGISTRY_PULL_FAILED.format(image=image), err=True)
-        raise SystemExit(1)
+        _abort(REGISTRY_PULL_FAILED.format(image=image))
 
 
 def _seed_camera_calibration() -> None:
@@ -538,20 +518,17 @@ def _seed_camera_calibration() -> None:
 
     serial = typer.prompt(CAMERA_SERIAL_PROMPT).strip()
     if not serial.isdigit():
-        typer.echo(CAMERA_SERIAL_INVALID.format(serial=serial), err=True)
-        raise SystemExit(1)
+        _abort(CAMERA_SERIAL_INVALID.format(serial=serial))
 
     with tempfile.TemporaryDirectory() as temp_directory:
         calibration_path = Path(temp_directory) / f"SN{serial}.conf"
         try:
             bash(f"curl -fsSL -o {calibration_path} {CALIBRATION_DOWNLOAD_URL.format(serial=serial)}")
         except CalledProcessError:
-            typer.echo(CALIBRATION_DOWNLOAD_FAILED.format(serial=serial), err=True)
-            raise SystemExit(1)
+            _abort(CALIBRATION_DOWNLOAD_FAILED.format(serial=serial))
 
         if not _calibration_is_real(calibration_path):
-            typer.echo(CALIBRATION_PLACEHOLDER.format(serial=serial), err=True)
-            raise SystemExit(1)
+            _abort(CALIBRATION_PLACEHOLDER.format(serial=serial))
 
         bash(f"scp {SSH_MUX} {calibration_path} {BOX_SSH_TARGET}:/tmp/")
 
@@ -567,3 +544,8 @@ def _calibration_is_real(calibration_path: Path) -> bool:
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(calibration_path)
     return any(parser.has_option(section, "fx") and parser.getint(section, "fx") > 0 for section in parser.sections())
+
+
+def _abort(message: str) -> None:
+    typer.echo(message, err=True)
+    raise SystemExit(1)
