@@ -33,14 +33,11 @@ echo "=== fresh camera-open check ==="
 sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture python -c "import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); e = c.open(p); c.close(); raise SystemExit(0 if e == sl.ERROR_CODE.SUCCESS else 1)" 2>&1
 echo "camera-open exit: $?"
 echo
-echo "=== daemon unix sockets (ss) ==="
-sudo ss -xlpn | grep -iE "zed|camsock|argus|nvsc" || echo "no matching listening unix sockets"
+echo "=== unix sockets on the host (/proc/net/unix) ==="
+grep -iE "zed|cam|argus|nvsc" /proc/net/unix || echo "no matching unix socket paths"
 echo
-echo "=== daemon file descriptors ==="
-sudo ls -l /proc/$(pidof ZEDX_Daemon)/fd 2>/dev/null | grep -i socket || echo "no sockets in the daemon fd table"
-echo
-echo "=== filesystem sockets mentioning zed ==="
-sudo find /tmp /run /var/run /var/nvidia -type s -iname "*zed*" 2>/dev/null || echo "none found"
+echo "=== unix sockets inside the container (/proc/net/unix) ==="
+sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture sh -c "grep -iE 'zed|cam|argus|nvsc' /proc/net/unix" 2>&1 || echo "no matching unix socket paths in the container"
 echo
 echo "=== socket paths the container can see ==="
 sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture sh -c "ls -la /tmp/camsock /tmp/argus_socket /tmp/nvscsock; ls /var/run/zed* /run/zed* 2>&1" 2>&1
