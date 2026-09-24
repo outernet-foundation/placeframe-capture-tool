@@ -7,18 +7,18 @@ The zed-capture service runs on the ZED Box (a Jetson appliance with a stereo ZE
 ## Hardware constraints
 
 - **No WiFi. Ever.** WiFi is fundamentally less reliable than physical wires. All connectivity is wired — no exceptions.
-- The ZED Box Mini is a Jetson Orin-based device (Orin Nano or Orin NX depending on SKU) with: 2x GMSL2 FAKRA-Z (camera), 1x Gigabit Ethernet (RJ45), 1x USB 3.0 Type-A, 1x Micro USB 2.0 Type-B (flashing/OTG), 1x HDMI. The ZED X camera connects via GMSL2, not USB.
+- The ZED Box Mini is a Jetson Orin-based device (Orin Nano or Orin NX depending on SKU) with: 2x GMSL2 FAKRA-Z (camera), 1x Gigabit Ethernet (RJ45, factory state — no placeframe role), 1x USB 3.0 Type-A (the phone AOA port), 1x Micro USB 2.0 Type-B (the deploy link + serial console; cable ships in the box), 1x HDMI. The ZED X camera connects via GMSL2, not USB.
 
 ## ZED Box networking
 
-The Jetson is the **USB host** for the phone-as-accessory link, and its RJ-45 wired ethernet is a point-to-point link to the operator laptop. The box holds static `169.254.0.1/16` with no gateway, no DNS, and no route off-link, ever — it is offline by design: images ship from the host at install time (never pulled from a registry on the box), and the ZED SDK's download path is hard-disabled (`ZED_SDK_DISABLE_DOWNLOAD=1`) with the camera calibration seeded at install instead. `scripts/AGENTS.md` holds the spine's mechanics (discovery flow, APIPA timing, image shipping).
+The Jetson is the **USB host** for the phone-as-accessory link (Type-A), and its micro-USB OTG port is the deploy link: a CDC-ethernet gadget at a deterministic `192.168.55.1`, serving DHCP to the connected laptop — the box configures the host. The box is offline by design — no default route, ever: images ship from the host at install time (never pulled from a registry on the box), and the ZED SDK's download path is hard-disabled (`ZED_SDK_DISABLE_DOWNLOAD=1`) with the camera calibration seeded at install instead. The RJ-45 ethernet port keeps factory state and carries no placeframe role. `scripts/AGENTS.md` holds the transport's mechanics (gadget link, image shipping).
 
 **Two connectivity paths:**
 
-1. **Laptop → wired ethernet (link-local)**: For deploying containers (`install-zed`), hitting the API from a browser, etc. Direct cable, zero configuration on the host side: the box's address is deterministic, and the laptop's unconfigured port self-assigns an APIPA address (RFC 3927) after the DHCP timeout — allow ~45s after plugging in; that latency is expected, not a dead cable.
-2. **Android phone → USB-C OTG (AOA)**: For the CaptureTool app hitting the REST API in the field. The ZED is the USB host; the phone is a USB accessory. See `docker/aoa-bridge/AGENTS.md` for the bridge service that drives the [Android Open Accessory](https://source.android.com/docs/core/interaction/accessories/aoa) handshake and forwards the accessory's bulk endpoints to `127.0.0.1:9000`.
+1. **Laptop → micro-USB (CDC gadget)**: For deploying containers (`install-zed`), hitting the API from a browser, etc. Plug in the cable shipped with the box — the host gets a NIC and an address with zero configuration; the box sits at `192.168.55.1`.
+2. **Android phone → USB-A (AOA)**: For the CaptureTool app hitting the REST API in the field. The ZED is the USB host; the phone is a USB accessory. See `docker/aoa-bridge/AGENTS.md` for the bridge service that drives the [Android Open Accessory](https://source.android.com/docs/core/interaction/accessories/aoa) handshake and forwards the accessory's bulk endpoints to `127.0.0.1:9000`.
 
-NVIDIA's stock `nv-l4t-usb-device-mode.service` is disabled by `install-zed` because it pins the USB-C port as a peripheral (CDC ethernet + mass-storage gadget), preventing the host-mode role the AOA bridge requires.
+NVIDIA's stock `nv-l4t-usb-device-mode.service` brings up the micro-B gadget and is the deploy transport itself; `install-zed` ensures it stays enabled. The phone's AOA link runs on the separate always-host Type-A port — no conflict.
 
 ## Shape
 

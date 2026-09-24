@@ -19,7 +19,7 @@ The camera is a swappable implementation detail behind the output contract (ster
 
 ### 1. Set up the box
 
-From a Linux host connected to the box by a direct ethernet cable (zero configuration on either end: the box holds a fixed link-local address and the host's port self-assigns one — allow ~45s after plugging in):
+From a Linux host connected to the box's micro-USB port with the cable shipped in the box (zero configuration on the host: the box brings the link up as a USB ethernet gadget and hands the host an address — the host never configures anything):
 
 ```bash
 git clone https://github.com/outernet-foundation/placeframe-capture-tool.git
