@@ -3,8 +3,9 @@
 # states, the IPC socket directories on the host and inside the container,
 # the zed_x_daemon journal, and a fresh run of the offline camera-open
 # check (its exit status is the timing experiment). Runs from the operator
-# laptop over the installer's own ssh state (.placeframe/ssh/) and changes
-# nothing on either side.
+# laptop over the installer's own ssh state (.placeframe/ssh/). Restarts
+# zed_x_daemon (stateless stock unit) once at the end to observe which
+# socket it creates.
 
 set -u
 
@@ -41,4 +42,21 @@ sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture grep -iE "
 echo
 echo "=== socket paths the container can see ==="
 sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture sh -c "ls -la /tmp/camsock /tmp/argus_socket /tmp/nvscsock; ls /var/run/zed* /run/zed* 2>&1" 2>&1
+echo
+echo "=== zed_x_daemon unit file ==="
+systemctl cat zed_x_daemon.service
+echo
+echo "=== full host unix socket table ==="
+cat /proc/net/unix
+echo
+echo "=== /tmp on the host ==="
+ls -la /tmp
+echo
+echo "=== restarting zed_x_daemon and watching for its socket ==="
+sudo systemctl restart zed_x_daemon.service
+sleep 3
+grep -iE "zed|cam|sock" /proc/net/unix || echo "no matching unix socket paths after restart"
+ls -la /tmp | grep -iE "zed|sock" || echo "no zed/sock files in /tmp after restart"
+journalctl -u zed_x_daemon -n 10 --no-pager
+systemctl is-active zed_x_daemon
 '
