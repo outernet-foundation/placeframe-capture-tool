@@ -63,7 +63,7 @@ services:
   # expose the HTTP API. Stock mirror image, digest-pinned; the box-specific
   # config ships beside this compose file and mounts via configs:.
   aoa-loki:
-    image: ghcr.io/outernet-foundation/mirror/docker.io/grafana/loki${LOKI_DIGEST:?err}
+    image: ${LOKI_IMAGE:?err}
     network_mode: host
     volumes:
       - aoa-loki:/loki
@@ -78,7 +78,7 @@ services:
   # single mirror of the main stack's — LOKI_WRITE_ENDPOINT drives the only
   # per-stack difference.
   aoa-alloy:
-    image: ghcr.io/outernet-foundation/mirror/docker.io/grafana/alloy${ALLOY_DIGEST:?err}
+    image: ${ALLOY_IMAGE:?err}
     network_mode: host
     environment:
       LOKI_WRITE_ENDPOINT: http://127.0.0.1:3100/loki/api/v1/push

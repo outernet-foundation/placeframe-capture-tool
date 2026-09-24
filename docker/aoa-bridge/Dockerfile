@@ -1,5 +1,5 @@
-ARG UV_BASE_DIGEST
-ARG PYTHON_BASE_DIGEST
+ARG UV_BASE_IMAGE
+ARG PYTHON_BASE_IMAGE
 
 # Rebuild libusb-1.0 with --disable-udev so its hotplug source is a
 # NETLINK_KOBJECT_UEVENT socket instead of libudev. The Debian package's
@@ -11,7 +11,7 @@ ARG PYTHON_BASE_DIGEST
 # namespace (plain Docker without userns-remap); it does not work in
 # rootless or user-namespaced containers, where uevents are filtered by
 # the kernel before they reach the container.
-FROM ghcr.io/outernet-foundation/mirror/docker.io/library/python${PYTHON_BASE_DIGEST} AS libusb-builder
+FROM ${PYTHON_BASE_IMAGE} AS libusb-builder
 
 ARG LIBUSB_COMMIT=a61afe5f75d969c4561a1d0ad753aa23cee6329a
 
@@ -38,9 +38,9 @@ RUN git clone https://github.com/libusb/libusb.git . \
     && make install DESTDIR=/staging
 
 
-FROM ghcr.io/outernet-foundation/mirror/ghcr.io/astral-sh/uv${UV_BASE_DIGEST} AS uv
+FROM ${UV_BASE_IMAGE} AS uv
 
-FROM ghcr.io/outernet-foundation/mirror/docker.io/library/python${PYTHON_BASE_DIGEST}
+FROM ${PYTHON_BASE_IMAGE}
 
 COPY --from=uv /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
 

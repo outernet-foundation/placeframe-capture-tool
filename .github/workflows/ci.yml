@@ -48,7 +48,7 @@ jobs:
           enable-cache: true
 
       - name: Publish plan dry run
-        run: uvx --from release-devkit==0.1.10 publish-stable --config build/publish-config.json --dry-run
+        run: uvx --from release-devkit==0.1.11 publish-stable --config build/publish-config.json --dry-run
 
   mirror:
     needs: [check]
@@ -72,7 +72,7 @@ jobs:
         run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Populate image mirror
-        run: uvx --from release-devkit==0.1.10 mirror-images --config build/publish-config.json
+        run: uvx --from release-devkit==0.1.11 mirror-images --config build/publish-config.json
 
   unity:
     needs: [check]
@@ -143,4 +143,4 @@ jobs:
       - name: Ensure release PR exists
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.10 ensure-release-pr
+        run: uvx --from release-devkit==0.1.11 ensure-release-pr

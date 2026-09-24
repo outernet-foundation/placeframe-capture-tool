@@ -1,6 +1,6 @@
-ARG CADDY_DIGEST
+ARG CADDY_IMAGE
 
-FROM ghcr.io/outernet-foundation/mirror/docker.io/library/caddy${CADDY_DIGEST}
+FROM ${CADDY_IMAGE}
 
 COPY docker/aoa-gateway/Caddyfile /etc/caddy/Caddyfile
 

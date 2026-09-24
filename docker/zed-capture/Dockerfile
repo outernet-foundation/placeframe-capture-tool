@@ -1,7 +1,7 @@
-ARG ZED_BASE_DIGEST
-ARG UV_BASE_DIGEST
-FROM ghcr.io/outernet-foundation/mirror/ghcr.io/astral-sh/uv${UV_BASE_DIGEST} AS uv
-FROM ghcr.io/outernet-foundation/mirror/docker.io/stereolabs/zed${ZED_BASE_DIGEST}
+ARG ZED_BASE_IMAGE
+ARG UV_BASE_IMAGE
+FROM ${UV_BASE_IMAGE} AS uv
+FROM ${ZED_BASE_IMAGE}
 
 COPY --from=uv /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
 

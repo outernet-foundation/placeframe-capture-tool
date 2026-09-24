@@ -50,7 +50,7 @@ jobs:
       - name: Fetch CI artifacts
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.10 fetch-ci-artifacts --config build/publish-config.json ${{ inputs.ci-run-id && format('--ci-run-id {0}', inputs.ci-run-id) || '' }}
+        run: uvx --from release-devkit==0.1.11 fetch-ci-artifacts --config build/publish-config.json ${{ inputs.ci-run-id && format('--ci-run-id {0}', inputs.ci-run-id) || '' }}
 
       - name: Publish stable
         id: publish-stable
@@ -59,14 +59,14 @@ jobs:
           # npm decides in silence whether to attempt the OIDC exchange; without verbose a trusted-publisher
           # mismatch surfaces as a bare ENEEDAUTH indistinguishable from a missing token
           NPM_CONFIG_LOGLEVEL: verbose
-        run: uvx --from release-devkit==0.1.10 publish-stable --config build/publish-config.json --with-apps
+        run: uvx --from release-devkit==0.1.11 publish-stable --config build/publish-config.json --with-apps
 
       # No-op events (nothing published) must not cut a release
       - name: Create GitHub Release
         if: steps.publish-stable.outputs.published == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.10 create-release --config build/publish-config.json
+        run: uvx --from release-devkit==0.1.11 create-release --config build/publish-config.json
 
   publish-dev:
     # The dev channel: every green dev push publishes immutable -dev.<ci-run-id> prereleases.
@@ -107,6 +107,6 @@ jobs:
           # mismatch surfaces as a bare ENEEDAUTH indistinguishable from a missing token
           NPM_CONFIG_LOGLEVEL: verbose
         run: >-
-          uvx --from release-devkit==0.1.10 publish-dev
+          uvx --from release-devkit==0.1.11 publish-dev
           --config build/publish-config.json
           --run-id ${{ github.event.workflow_run.id || inputs.dev-run-id }}
