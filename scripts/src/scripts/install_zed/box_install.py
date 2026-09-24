@@ -583,6 +583,7 @@ def _seed_camera_calibration() -> None:
     serial_match = re.search(r"Serial Number: S/N (\d+)", probe_output)
     serial = serial_match.group(1) if serial_match else None
     if serial is None:
+        logger.info("camera_serial_unreadable", extra={"probe_output": probe_output.strip()[-400:]})
         serial = typer.prompt(CAMERA_SERIAL_PROMPT).strip()
         if not serial.isdigit():
             _abort(CAMERA_SERIAL_INVALID.format(serial=serial))
