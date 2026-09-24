@@ -315,7 +315,7 @@ warmup can't download anything even if the SDK tries — that is the point.
 
 ### P3 — image acquisition (code commit: `Ship box images from the host instead of the box pulling`)
 
-- [x] 3.1 `.env.lock`: `LOKI_DIGEST`/`ALLOY_DIGEST` become the per-arch arm64 manifest
+- [x] 3.1 `.env.lock`: `LOKI_IMAGE`/`ALLOY_IMAGE` become the per-arch arm64 manifest
       digests from 1.3. Update the lock-update procedure note (scripts/AGENTS.md, P5).
 - [x] 3.2 Default mode `_acquire_images`: host pulls the three first-party tree-SHA tags
       + two stock per-arch-digest refs from the mirror (all five with
@@ -332,7 +332,7 @@ warmup can't download anything even if the SDK tries — that is the point.
 
 - [x] 4.1 Bake the ZEDX `.isp` sensor profiles into the service image: add the
       `5.2-tools-devel-jetson-jp6.1.0` tag to `x-base-images` (new `.env.lock` key
-      `ZED_DEVEL_DIGEST`, per-arch arm64 manifest digest — mirror-images then carries
+      `ZED_DEVEL_IMAGE`, per-arch arm64 manifest digest — mirror-images then carries
       it; same distribution posture as the SDK already inside our public images) and
       multi-stage `COPY --from=<devel-stage> /usr/local/zed/firmware/ZEDX/` into the
       zed-capture image at the same path.
