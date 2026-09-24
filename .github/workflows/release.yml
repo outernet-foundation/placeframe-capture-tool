@@ -25,52 +25,48 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  packages: write
-  id-token: write
-  actions: read
-
 jobs:
   publish-stable:
     if: github.event_name != 'workflow_run' && inputs.dev-publish != true
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
     steps:
-      - name: Generate app token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.PLACEFRAME_CI_APP_ID }}
-          private-key: ${{ secrets.PLACEFRAME_CI_PRIVATE_KEY }}
-
       - name: Checkout
         uses: actions/checkout@v5
         with:
           ref: main
-          token: ${{ steps.app-token.outputs.token }}
 
       # Workaround: fetch-tags is broken with shallow clones
       - run: git fetch --tags origin
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Fetch CI artifacts
-        id: fetch-ci-artifacts
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.9 fetch-ci-artifacts --config build/publish-config.json ${{ inputs.ci-run-id && format('--ci-run-id {0}', inputs.ci-run-id) || '' }}
+        run: uvx --from release-devkit==0.1.10 fetch-ci-artifacts --config build/publish-config.json ${{ inputs.ci-run-id && format('--ci-run-id {0}', inputs.ci-run-id) || '' }}
 
       - name: Publish stable
+        id: publish-stable
         env:
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: uvx --from release-devkit==0.1.9 publish-stable --config build/publish-config.json --with-apps
+          # npm decides in silence whether to attempt the OIDC exchange; without verbose a trusted-publisher
+          # mismatch surfaces as a bare ENEEDAUTH indistinguishable from a missing token
+          NPM_CONFIG_LOGLEVEL: verbose
+        run: uvx --from release-devkit==0.1.10 publish-stable --config build/publish-config.json --with-apps
 
+      # No-op events (nothing published) must not cut a release
       - name: Create GitHub Release
+        if: steps.publish-stable.outputs.published == 'true'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: uvx --from release-devkit==0.1.9 create-release --config build/publish-config.json
+          GH_TOKEN: ${{ github.token }}
+        run: uvx --from release-devkit==0.1.10 create-release --config build/publish-config.json
 
   publish-dev:
     # The dev channel: every green dev push publishes immutable -dev.<ci-run-id> prereleases.
@@ -91,7 +87,8 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
@@ -100,6 +97,8 @@ jobs:
 
       - name: Setup uv
         uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
       - name: Publish dev prereleases
         env:
@@ -108,6 +107,6 @@ jobs:
           # mismatch surfaces as a bare ENEEDAUTH indistinguishable from a missing token
           NPM_CONFIG_LOGLEVEL: verbose
         run: >-
-          uvx --from release-devkit==0.1.9 publish-dev
+          uvx --from release-devkit==0.1.10 publish-dev
           --config build/publish-config.json
           --run-id ${{ github.event.workflow_run.id || inputs.dev-run-id }}
