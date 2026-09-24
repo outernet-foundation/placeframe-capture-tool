@@ -4,7 +4,9 @@ Executable by a session with no other context. Checkboxes flip to `[x]` when the
 committed and verified; a fresh session resumes at the first unchecked box. Prose (`.md`)
 and code in separate commits; one-line subjects <72 chars; no trailers.
 
-Worktree: `.worktrees/zed-install-tarball` (branch `zed-install-tarball`, off `dev`).
+Worktree: none — branch `zed-install-tarball` is checked out directly at the repo
+root (the `.worktrees/zed-install-tarball` path this line used to name was never
+re-created; work in the main checkout), off `dev`, 24 commits ahead.
 
 ## 1. Rulings from the design session (2026-09-23 — do not relitigate)
 
@@ -235,6 +237,17 @@ warmup can't download anything even if the SDK tries — that is the point.
   condition (AOA needing micro-B) is dead — gadget and AOA occupy different ports and
   controllers by construction. The un-observed half (gadget enabled *while* AOA
   active) is a formality riding 7.4.
+- **Post-P7.3 installer audit series** (2026-09-23, commits `e0aa5f2`…`6739151`,
+  operator-ruled, out-of-plan): behavior-neutral tidy (shared `_abort`, stdin
+  sudoers refresh, hoisted stock shipping, inlined probe, de-parameterized
+  bootstrap), the stale `nmcli` grant dropped from `SUDOERS_RULE`, the four
+  catch-convert-rethrow wrappers deleted so real docker/curl/pyzed errors
+  propagate (expect tracebacks, not curated messages), the offline camera-open
+  assertion ungated — **it now runs in `--build` mode too**, so a `--build`
+  install requires the camera attached and a seeded serial to complete — and
+  the first-contact bootstrap now returns "password rejected" only on a genuine
+  `Permission denied` (transport failures raise with the real ssh error).
+  Installer is 773 lines across the package (from 845 pre-audit).
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
@@ -362,17 +375,27 @@ micro-B) and 7.3 (pulsar ssh_targets touch-up). 6.2's box migration is moot for
 micro-B-only boxes; its host-cleanup half rides with `migrate-zed-box.sh` until the
 operator's laptop is confirmed clean (7.3).
 
-- [ ] 6.1 Fresh-virgin-box install in default mode; then `--build` install. Checklist
+- [x] 6.1 Fresh-virgin-box install in default mode; then `--build` install. Checklist
       mirrors the extraction plan's gate: stack healthy, box-Loki queryable on-box, phone
       AOA link + log drain functional, warmup passed offline (this is the seeded
       offline-open confirm from 1.2), box has no default route (`ip route` shows only
       `169.254.0.0/16 dev …`). First contact doubles as the factory-box APIPA
       observation from 1.1: note whether the ARP-scan discovery finds the virgin box.
-- [ ] 6.2 Migration of the existing box + host per §7 (one time).
-- [ ] 6.3 Operator: update pulsar config `ssh_targets.zed-box.host` → `169.254.0.1`,
+      Moot per the P7 supersession — the ethernet topology this validated is retired;
+      7.4 is the reshaped bench.
+- [x] 6.2 Migration of the existing box + host per §7 (one time).
+      Moot in its 100.64→169.254 form; the micro-B migration for previously-installed
+      boxes (§7, one-time gadget-service enable over ethernet) is the surviving half,
+      and the old-NAT host cleanup rides with the migrate script until the operator's
+      laptop is confirmed clean (7.3 kept both scripts for exactly that).
+- [x] 6.3 Operator: update pulsar config `ssh_targets.zed-box.host` → `169.254.0.1`,
       re-run `uv run sandbox authorize zed-box`, confirm `ssh zed-box` from a sandbox —
       via the §7 rule pair if the coi-generated target rules don't materialize or
       arrive shadowed. Deploys themselves run from the host shell (§9).
+      Re-keyed by P7: the target is now the gadget address `192.168.55.1` (stock
+      subnet, RFC1918 — coi rejects it for sandbox-originated traffic exactly like
+      link-local, so the §7-style rule pair is needed either way). Lives as the §8
+      cross-repo operator touch-up.
 
 ### P7 — micro-B-only transport pivot (supersedes the ethernet spine; a fresh session starts here)
 
@@ -451,8 +474,10 @@ assertion) carries over unchanged. The factory box currently on the operator's b
       stack healthy, box-Loki queryable on-box, phone AOA link + log drain functional
       on Type-A while the gadget idles, warmup/offline open passed, `ip route` shows
       no default, unplug/replug micro-B → idempotent re-run; then `--build` over
-      micro-B; then a single-layer app-update round-trip (the update flow the public
-      actually rides). Note USB2 throughput for the record.
+      micro-B (the camera-open assertion now runs in `--build` too — camera must be
+      attached and the serial seeded for that leg to complete); then a single-layer
+      app-update round-trip (the update flow the public actually rides). Note USB2
+      throughput for the record.
 
 ## 6. Hazards
 
