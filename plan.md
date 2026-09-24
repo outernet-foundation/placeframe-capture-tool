@@ -299,6 +299,14 @@ warmup can't download anything even if the SDK tries — that is the point.
   survives only as the unreachable-camera fallback. Same probe output showed
   the "Failed to connect to zed_x_daemon" warning is non-fatal noise once
   the four sockets are mounted (init proceeds to read FW/serial/mode).
+- **Installs are headless — operator ruling** (2026-09-24, after the serial
+  prompt fired once on a stack-down box): no installer input is acceptable,
+  ever. The label-prompt fallback is deleted; seeding moved after the
+  compose redeploy (the serial probe execs into the just-deployed container,
+  and the settings directory bind makes a late-seeded conf visible without
+  a recreate), and an unreadable serial aborts with the probe output
+  attached. The camera is a hard install prerequisite either way — the
+  closing assertion is ungated.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
