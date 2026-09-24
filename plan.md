@@ -576,6 +576,9 @@ worth a coi bug report either way — see §8).
   `ssh_targets`, target allows must be inserted above the rejects.
 - Pulsar `messages.py` ssh-targets example still says `100.64.0.1` — cross-repo, operator
   touch-up whenever convenient.
+- `com.fofx.nessle` rides a git pin (`bbfc1f57`, the lock's last-green revision) pending
+  its npm publish — flip the manifest back to the registry pin (`1.0.0`) once the
+  package is live, drop the lock entry's `#hash`, and let CI prove it.
 
 ## 9. Planning decisions (recorded so they aren't re-derived)
 
