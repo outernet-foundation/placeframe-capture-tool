@@ -288,6 +288,17 @@ warmup can't download anything even if the SDK tries — that is the point.
   inode → ECONNREFUSED until recreation. Fix: the fourth bind plus the
   inode caveat comment on the group; `wait_for_zed_camera.py` gates on all
   four sockets. Diagnostic trail: `diagnose-box-camera.sh`.
+- **The "already seeded" guard matched other cameras' confs** (bench,
+  2026-09-24): the bench box's `/usr/local/zed/settings` held six factory-era
+  confs (June 2026, other serials) — the `ls SN*.conf` guard passed, seeding
+  skipped, and the attached camera (S/N 43684417) hit
+  CALIBRATION FILE NOT AVAILABLE. Fix: seeding now probes the camera first —
+  the GMSL init banner prints its serial even while open() fails on the
+  missing calibration, so the probed serial is authoritative — and
+  "already seeded" means "the conf for THIS serial exists". The label prompt
+  survives only as the unreachable-camera fallback. Same probe output showed
+  the "Failed to connect to zed_x_daemon" warning is non-fatal noise once
+  the four sockets are mounted (init proceeds to read FW/serial/mode).
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
