@@ -56,4 +56,13 @@ grep -aoE "[/A-Za-z0-9_.-]*sock[/A-Za-z0-9_.-]*" /usr/sbin/ZEDX_Daemon | sort -u
 echo
 echo "=== socket path strings inside the SDK libraries (container) ==="
 sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture find /usr/local/zed/lib -name "*.so*" -exec grep -aoE "[/A-Za-z0-9_.-]*sock[/A-Za-z0-9_.-]*" {} + | sort -u | head -40
+echo
+echo "=== calibration files on the host ==="
+ls -la /usr/local/zed/settings/
+echo
+echo "=== calibration files inside the container ==="
+sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture ls -la /usr/local/zed/settings/
+echo
+echo "=== settings-path format strings inside the SDK libraries ==="
+sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture find /usr/local/zed/lib -name "*.so*" -exec grep -aoE "/usr/local/zed/settings[/A-Za-z0-9_.%-]*" {} + | sort -u | head -20
 '
