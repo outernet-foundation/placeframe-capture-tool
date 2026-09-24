@@ -37,7 +37,7 @@ echo "=== unix sockets on the host (/proc/net/unix) ==="
 grep -iE "zed|cam|argus|nvsc" /proc/net/unix || echo "no matching unix socket paths"
 echo
 echo "=== unix sockets inside the container (/proc/net/unix) ==="
-sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture sh -c "grep -iE 'zed|cam|argus|nvsc' /proc/net/unix" 2>&1 || echo "no matching unix socket paths in the container"
+sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture grep -iE "zed|cam|argus|nvsc" /proc/net/unix 2>&1 || echo "no matching unix socket paths in the container"
 echo
 echo "=== socket paths the container can see ==="
 sudo docker compose -f ~/.placeframe/compose.rig.yml exec zed-capture sh -c "ls -la /tmp/camsock /tmp/argus_socket /tmp/nvscsock; ls /var/run/zed* /run/zed* 2>&1" 2>&1
