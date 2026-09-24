@@ -1,5 +1,5 @@
 # Hand-written partial stubs for libusb1 (no upstream stubs, no types-libusb1 on pypi),
-# covering only the surface used by docker/aoa-bridge/src/aoa_bridge/main.py.
+# covering only the surface used by workloads/aoa-bridge/src/aoa_bridge/main.py.
 
 from collections.abc import Callable, Iterator
 from types import TracebackType

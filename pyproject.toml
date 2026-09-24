@@ -19,7 +19,7 @@ dev = [
 ]
 
 [tool.uv.workspace]
-members = ["docker/aoa-bridge", "docker/zed-capture", "scripts"]
+members = ["workloads/aoa-bridge", "workloads/zed-capture", "scripts"]
 
 [tool.uv]
 required-version = "==0.12.15"
@@ -38,11 +38,11 @@ venvPath = "."
 venv = ".venv"
 typeCheckingMode = "strict"
 include = [
-    "docker/**/src/**/*.py",
-    "docker/**/src/**/*.pyi",
+    "workloads/**/src/**/*.py",
+    "workloads/**/src/**/*.pyi",
     "scripts/**/src/**/*.py",
     "scripts/**/src/**/*.pyi",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["docker/zed-capture/tests"]
+testpaths = ["workloads/zed-capture/tests"]

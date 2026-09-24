@@ -484,7 +484,7 @@ def _acquire_images(
 
         logger.info("cross_compiling_images", extra={"bake_file": str(BAKE_FILE)})
         # Mirrors docker-devkit's build verb: the bake env carries the service
-        # SHAs plus the full .env.lock — the Dockerfiles' base-image ARGs have
+        # SHAs plus the full images.lock — the Dockerfiles' base-image ARGs have
         # no defaults, so a missing key is a hard bake error, not a fallback.
         env_prefix = " ".join(f"{k}={v}" for k, v in {**service_shas, **env_lock}.items())
         set_flags = " ".join(f"--set {service.name}.tags={local_images[service.name]}" for service in ZED_SERVICES)

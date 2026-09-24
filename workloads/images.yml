@@ -1,6 +1,6 @@
 # x-base-images is the single declaration home for every third-party image this
 # repo consumes — Dockerfile bases AND runtime images pulled by compose (the
-# `*_IMAGE` keys feed compose image holes via .env.lock).
+# `*_IMAGE` keys feed compose image holes via images.lock).
 x-base-images:
   ZED_BASE_IMAGE: "ghcr.io/outernet-foundation/mirror/docker.io/stereolabs/zed:5.2-runtime-jetson-jp6.1.0"
   ZED_DEVEL_IMAGE: "ghcr.io/outernet-foundation/mirror/docker.io/stereolabs/zed:5.2-tools-devel-jetson-jp6.1.0"
@@ -26,7 +26,7 @@ services:
   zed-capture:
     build:
       context: .
-      dockerfile: docker/zed-capture/Dockerfile
+      dockerfile: workloads/zed-capture/Dockerfile
       platforms: [ "linux/arm64" ]
       args: *base-args
       tags:
@@ -35,7 +35,7 @@ services:
   aoa-bridge:
     build:
       context: .
-      dockerfile: docker/aoa-bridge/Dockerfile
+      dockerfile: workloads/aoa-bridge/Dockerfile
       platforms: [ "linux/arm64" ]
       args:
         UV_BASE_IMAGE: "${UV_BASE_IMAGE:-}"
@@ -46,7 +46,7 @@ services:
   aoa-gateway:
     build:
       context: .
-      dockerfile: docker/aoa-gateway/Dockerfile
+      dockerfile: workloads/aoa-gateway/Dockerfile
       platforms: [ "linux/arm64" ]
       args: *base-args
       tags:

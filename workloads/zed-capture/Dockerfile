@@ -45,17 +45,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 # Install remaining dependencies from lock file
-COPY docker/zed-capture/pylock.toml ./pylock.toml
+COPY workloads/zed-capture/pylock.toml ./pylock.toml
 RUN --mount=type=cache,id=uvcache,sharing=locked,target=/root/.cache/uv \
     uv pip install -r pylock.toml
 
 # Install source packages
-COPY docker/zed-capture /app/zed
+COPY workloads/zed-capture /app/zed
 RUN uv pip install --no-deps --no-sources \
     /app/zed
 
 RUN uv pip check
 
-COPY --chmod=0755 docker/zed-capture/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chmod=0755 workloads/zed-capture/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

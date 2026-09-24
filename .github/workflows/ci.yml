@@ -30,7 +30,7 @@ jobs:
       - name: Codegen staleness
         run: |
           uv run --no-sync openapi-client-codegen --config build/openapi-projects.json
-          git diff --exit-code -- packages/generated docker/zed-capture/openapi.json
+          git diff --exit-code -- packages/generated workloads/zed-capture/openapi.json
 
   manifest:
     runs-on: ubuntu-latest
@@ -119,11 +119,11 @@ jobs:
       - name: Build
         run: uv run --no-sync build --mode ci --gpu none --targets zed-capture --targets aoa-bridge --targets aoa-gateway
 
-      - name: Upload .env.lock
+      - name: Upload images.lock
         uses: actions/upload-artifact@v6
         with:
-          name: env-lock-zed
-          path: .env.lock
+          name: images-lock-zed
+          path: workloads/images.lock
           include-hidden-files: true
 
   ensure-release-pr:

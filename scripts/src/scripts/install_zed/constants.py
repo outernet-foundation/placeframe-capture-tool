@@ -5,7 +5,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class ZedService:
-    # Image base name and compose.bake.yml target — the same string by
+    # Image base name and workloads/images.yml target — the same string by
     # construction.
     name: str
     # Env var compose.rig.yml uses to override the image (`${X:-default}`). Asymmetric
@@ -17,7 +17,7 @@ class ZedService:
 
 @dataclass(frozen=True)
 class StockImage:
-    # Key into .env.lock carrying the full pinned reference
+    # Key into workloads/images.lock carrying the full pinned reference
     # (`path:tag@sha256:…`), pullable and compose-resolvable as-is.
     image_env: str
 
@@ -32,7 +32,7 @@ ZED_SERVICES: tuple[ZedService, ...] = (
 )
 
 # Observability stock images consumed straight from the org mirror,
-# full per-arch arm64 refs from .env.lock — never built locally,
+# full per-arch arm64 refs from workloads/images.lock — never built locally,
 # pulled on the host and shipped to the box in both install modes.
 ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
     StockImage("LOKI_IMAGE"),
@@ -45,13 +45,13 @@ ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
 STOCK_IMAGE_SHIP_TAG = "placeframe-ship"
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-BAKE_FILE = REPO_ROOT / "compose.bake.yml"
+BAKE_FILE = REPO_ROOT / "workloads" / "images.yml"
 COMPOSE_SOURCE = REPO_ROOT / "compose.rig.yml"
-SYSTEMD_UNIT_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "placeframe-zed.service"
-WAIT_FOR_ZED_CAMERA_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "wait_for_zed_camera.py"
-LOKI_BOX_CONFIG_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "box.yaml"
-ALLOY_CONFIG_SOURCE = REPO_ROOT / "docker" / "zed-capture" / "config.alloy"
-ENV_LOCK_FILE = REPO_ROOT / ".env.lock"
+SYSTEMD_UNIT_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "placeframe-zed.service"
+WAIT_FOR_ZED_CAMERA_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "wait_for_zed_camera.py"
+LOKI_BOX_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "box.yaml"
+ALLOY_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "config.alloy"
+ENV_LOCK_FILE = REPO_ROOT / "workloads" / "images.lock"
 REMOTE_DIR = "~/.placeframe"
 REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"

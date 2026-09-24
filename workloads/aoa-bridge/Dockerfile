@@ -65,11 +65,11 @@ RUN ldconfig
 
 RUN uv venv $UV_PROJECT_ENVIRONMENT
 
-COPY docker/aoa-bridge/pylock.toml ./pylock.toml
+COPY workloads/aoa-bridge/pylock.toml ./pylock.toml
 RUN --mount=type=cache,id=uvcache,sharing=locked,target=/root/.cache/uv \
     uv pip install -r pylock.toml
 
-COPY docker/aoa-bridge /app/aoa-bridge
+COPY workloads/aoa-bridge /app/aoa-bridge
 RUN uv pip install --no-deps --no-sources /app/aoa-bridge
 
 RUN uv pip check
