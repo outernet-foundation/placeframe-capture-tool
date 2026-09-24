@@ -613,7 +613,7 @@ def _calibration_is_real(calibration_path: Path) -> bool:
     # file is the signal that the serial matched a real camera.
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(calibration_path)
-    return any(parser.has_option(section, "fx") and parser.getint(section, "fx") > 0 for section in parser.sections())
+    return any(parser.has_option(section, "fx") and parser.getfloat(section, "fx") > 0 for section in parser.sections())
 
 
 def _abort(message: str) -> NoReturn:
