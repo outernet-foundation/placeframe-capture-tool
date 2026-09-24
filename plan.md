@@ -266,6 +266,16 @@ warmup can't download anything even if the SDK tries — that is the point.
   architecture survive, but not registry digests. Consequence: the stock pair is
   referenced on the box by its transport tag (`placeframe-ship`) in both the box
   `.env` and the post-load assertion; the digest pin's job ends at the host pull.
+- **The gadget transport mints a default route** (bench, 2026-09-24): L4T's
+  usb-device-mode runtime script (fired per link-up by
+  99-nv-l4t-usb-device-mode.rules) runs `route add default gw 192.168.55.100
+  dev l4tbr0` — stock internet-sharing toward the host; the tripwire's
+  ethernet attribution was wrong. The scripts' own documented knob
+  (`net_ipv4_defroute_router`, "leave blank to prevent creating a default
+  route") is blanked by the installer beside the gadget enable, plus a
+  one-time delete of the live route (`ip` joins SUDOERS_RULE). The DHCP
+  server serving the host is stock ISC dhcpd with a single-address pool
+  (.100) — why the host's gadget address never churns.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
@@ -637,7 +647,13 @@ worth a coi bug report either way — see §8).
   192.168.55.1/24 with the stock composite (CDC net + ACM serial + mass-storage) wins
   on determinism, zero gadget surgery, and free persistence. install-zed's only gadget
   action is `systemctl enable --now`. No NCM/ECM re-author while deploys run on Linux
-  hosts.
+  hosts. Amended 2026-09-24 by the defroute ruling below: one documented knob is
+  blanked, everything else stays verbatim.
+- **Offline posture beats stock-verbatim for the defroute knob** (2026-09-24): the
+  micro-B ruling assumed the gadget adds no default route; the bench falsified that.
+  `net_ipv4_defroute_router` is blanked (the scripts' own documented suppression), and
+  the live route deleted once — deleting alone is not durable, the udev-fired runtime
+  script re-adds it on every replug.
 - **Installer ssh state is repo-scoped, with host-key reset** (operator ruling
   2026-09-24, after the first micro-B install died on a stale global-known_hosts
   ECDSA entry for the shared gadget address): deploy key and known_hosts live under
