@@ -4,7 +4,7 @@ The capture tier of [Placeframe](https://github.com/outernet-foundation/placefra
 
 ## Commands
 
-All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-devkit`, `openapi-client-codegen`, `release-devkit`) are PyPI dependencies of the dev group — no local tool code.
+All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-devkit`, `openapi-client-codegen`) are PyPI dependencies of the dev group; `release-devkit` is uvx-invoked by CI only — no local tool code.
 
 - `uv run install-zed` — end-to-end SSH deploy of the box stack (see `scripts/AGENTS.md`). `--build` cross-compiles images locally instead of pulling from ghcr.
 - `uv run install --build --project CaptureTool` — build the APK and install it on the host-attached phone with the `READ_LOGS` grant applied (unity-devkit). `uv run compile-unity --project CaptureTool --build android-mobile` for a build-only sanity check.
