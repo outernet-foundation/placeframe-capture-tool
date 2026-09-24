@@ -4,6 +4,11 @@ docker run --privileged --rm tonistiigi/binfmt --install arm64
 (persists until reboot) — or pull prebuilt images with plain
 `uv run install-zed`."""
 
+BOX_HOST_KEY_STUCK = """\
+Host-key verification still fails after the installer's known_hosts reset —
+not a state the point-to-point cable can produce. Something on this host is
+diverting ssh to the gadget address; see .placeframe/logs/install-zed.jsonl."""
+
 BOX_ID_UNRESOLVABLE = "Could not resolve box id: /proc/device-tree/serial-number is empty or missing"
 
 IMAGE_UNRESOLVED_ON_BOX = "Image {image} is missing on the box after the save|load transfer — re-run install-zed."

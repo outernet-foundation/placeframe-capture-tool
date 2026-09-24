@@ -1,3 +1,4 @@
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -62,9 +63,27 @@ ZED_SETTINGS_DIR = "/usr/local/zed/settings"
 # Stereolabs' factory-calibration service; the only artifact install-zed
 # ever fetches from stereolabs.com, fetched once on the host at seed time.
 CALIBRATION_DOWNLOAD_URL = "https://calib.stereolabs.com/?SN={serial}"
-SSH_SOCKET = "/tmp/install-zed-ssh-%C"
+# All installer ssh state is repo-scoped under the gitignored .placeframe/:
+# the deploy key and known_hosts live here, logs beside them. Nothing in
+# ~/.ssh is ever read or written — a fresh clone bootstraps itself, and the
+# operator's own Jetson entries can never collide with the box (every L4T
+# gadget device answers at this same address, so global known_hosts churns
+# on any Jetson ever plugged in).
+SSH_STATE_DIR = REPO_ROOT / ".placeframe" / "ssh"
+SSH_KEY = SSH_STATE_DIR / "id_ed25519"
+SSH_KNOWN_HOSTS = SSH_STATE_DIR / "known_hosts"
+# Keyed on the checkout so concurrent installs from two clones never ride
+# one master (each clone deploys its own key); %C hashes the ssh target.
+SSH_SOCKET = f"/tmp/install-zed-ssh-{hashlib.sha256(str(REPO_ROOT).encode()).hexdigest()[:8]}-%C"
 SSH_MUX = f"-o ControlMaster=auto -o ControlPath={SSH_SOCKET} -o ControlPersist=120"
-SSH_KEY = Path.home() / ".ssh" / "id_ed25519"
+# -F /dev/null pins every option here: no ~/.ssh/config Host block,
+# ProxyJump, or alternate identity can divert the install connection.
+SSH_TRUST = (
+    f"-i {SSH_KEY} -o IdentitiesOnly=yes -F /dev/null"
+    f" -o UserKnownHostsFile={SSH_KNOWN_HOSTS} -o GlobalKnownHostsFile=/dev/null"
+    " -o StrictHostKeyChecking=accept-new"
+)
+SSH_OPTIONS = f"{SSH_MUX} {SSH_TRUST}"
 GHCR_BASE = "ghcr.io/outernet-foundation/placeframe-capture-tool"
 
 # Micro-B OTG transport. nv-l4t-usb-device-mode brings the port up as a

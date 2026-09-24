@@ -38,8 +38,10 @@ from .constants import (
     REMOTE_LOKI_CONFIG,
     REMOTE_WAIT_FOR_ZED_CAMERA,
     SSH_KEY,
-    SSH_MUX,
+    SSH_KNOWN_HOSTS,
+    SSH_OPTIONS,
     SSH_SOCKET,
+    SSH_TRUST,
     STOCK_IMAGE_SHIP_TAG,
     SUDOERS_RULE,
     SYSTEMD_UNIT_SOURCE,
@@ -51,6 +53,7 @@ from .constants import (
 from .messages import (
     ARM64_EMULATION_MISSING,
     BOX_HAS_DEFAULT_ROUTE,
+    BOX_HOST_KEY_STUCK,
     BOX_ID_UNRESOLVABLE,
     BOX_LOGIN_PROMPT,
     BOX_UNREACHABLE,
@@ -90,7 +93,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_images: dict[st
 
     # Open one SSH connection and reuse it for every command below.
     logger.info("connecting_to_box", extra={"target": BOX_SSH_TARGET})
-    bash(f"ssh {SSH_MUX} -fN {BOX_SSH_TARGET}")
+    bash(f"ssh {SSH_OPTIONS} -fN {BOX_SSH_TARGET}")
     try:
         # Refresh the passwordless-sudo rule. `sudo -n install` overwrites the
         # file with identical content on subsequent runs, so this is naturally
@@ -115,7 +118,7 @@ def install_box(build: bool, service_shas: dict[str, str], stock_images: dict[st
                 for deb_file in DOCKER_DEBS:
                     bash(f"curl -fsSL -o {temp_directory}/{deb_file} {DOCKER_DEB_BASE}/{deb_file}")
                 logger.info("transferring_docker_packages", extra={"target": BOX_SSH_TARGET})
-                bash(f"scp {SSH_MUX} {temp_directory}/*.deb {BOX_SSH_TARGET}:/tmp/")
+                bash(f"scp {SSH_OPTIONS} {temp_directory}/*.deb {BOX_SSH_TARGET}:/tmp/")
             deb_paths = " ".join(f"/tmp/{deb_file}" for deb_file in DOCKER_DEBS)
             box_user = BOX_SSH_TARGET.split("@")[0]
             ssh_run(f"sudo dpkg -i {deb_paths}")
@@ -164,10 +167,10 @@ def install_box(build: bool, service_shas: dict[str, str], stock_images: dict[st
         # via compose configs: — the stock images carry no baked config.
         logger.info("transferring_compose_file", extra={"source": str(COMPOSE_SOURCE)})
         ssh_run(f"mkdir -p {REMOTE_DIR}")
-        bash(f"scp {SSH_MUX} {COMPOSE_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_COMPOSE}")
-        bash(f"scp {SSH_MUX} {WAIT_FOR_ZED_CAMERA_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_WAIT_FOR_ZED_CAMERA}")
-        bash(f"scp {SSH_MUX} {LOKI_BOX_CONFIG_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_LOKI_CONFIG}")
-        bash(f"scp {SSH_MUX} {ALLOY_CONFIG_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_ALLOY_CONFIG}")
+        bash(f"scp {SSH_OPTIONS} {COMPOSE_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_COMPOSE}")
+        bash(f"scp {SSH_OPTIONS} {WAIT_FOR_ZED_CAMERA_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_WAIT_FOR_ZED_CAMERA}")
+        bash(f"scp {SSH_OPTIONS} {LOKI_BOX_CONFIG_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_LOKI_CONFIG}")
+        bash(f"scp {SSH_OPTIONS} {ALLOY_CONFIG_SOURCE!s} {BOX_SSH_TARGET}:{REMOTE_ALLOY_CONFIG}")
 
         # Jetson hardware-burned serial survives OS reflashes.
         box_id = ssh_output("tr -d '\\0\\n' < /proc/device-tree/serial-number").strip()
@@ -297,13 +300,45 @@ def _ensure_key_access() -> None:
     # with a command from SUDOERS_RULE's own list: `sudo -n true` would be
     # denied even on a bootstrapped box (`true` is not in the rule), so a
     # listed no-op is the honest dormancy probe.
-    if bash_check(f"ssh -o BatchMode=yes -o ConnectTimeout=5 {BOX_SSH_TARGET} sudo -n systemctl --version"):
+    _ensure_box_host_key()
+    if bash_check(f"ssh {SSH_TRUST} -o BatchMode=yes -o ConnectTimeout=5 {BOX_SSH_TARGET} sudo -n systemctl --version"):
         return
 
     if not _bootstrap_box_access(FACTORY_LOGIN):
         typer.echo(FACTORY_LOGIN_REJECTED, err=True)
         password: str = typer.prompt(BOX_LOGIN_PROMPT, hide_input=True)
         _bootstrap_box_access(password)
+
+
+def _ensure_box_host_key() -> None:
+    # TOFU with reset. Host-key pinning defends against network MITM, which
+    # the point-to-point micro-B cable cannot carry, and every L4T gadget
+    # device answers at this same address — so a mismatch against the
+    # installer-owned known_hosts can only mean a different or reflashed
+    # box since the last install from this checkout. Resetting the file is
+    # zero-collateral (nothing outside the installer reads it); a mismatch
+    # surviving the reset is a state the cable topology cannot produce.
+    if _box_host_key_matches():
+        return
+    logger.info("resetting_box_host_key", extra={"path": str(SSH_KNOWN_HOSTS)})
+    SSH_KNOWN_HOSTS.unlink(missing_ok=True)
+    if not _box_host_key_matches():
+        _abort(BOX_HOST_KEY_STUCK)
+
+
+def _box_host_key_matches() -> bool:
+    # The probe records the host key (accept-new) and needs no privileges;
+    # on a virgin box the same connection fails pubkey auth after the key
+    # is recorded, which still counts as recorded.
+    try:
+        bash_output(f"ssh {SSH_TRUST} -o BatchMode=yes -o ConnectTimeout=5 {BOX_SSH_TARGET} true")
+    except CalledProcessError as error:
+        stderr = error.stderr or ""
+        if "Host key verification failed" in stderr:
+            return False
+        if "Permission denied" not in stderr:
+            raise
+    return True
 
 
 def _bootstrap_box_access(password: str) -> bool:
@@ -327,7 +362,7 @@ def _bootstrap_box_access(password: str) -> bool:
             "SSH_ASKPASS_REQUIRE": "force",
             "INSTALL_ZED_ASKPASS": password,
         }
-        auth_options = "-o StrictHostKeyChecking=accept-new -o PubkeyAuthentication=no -o ConnectTimeout=5"
+        auth_options = f"{SSH_TRUST} -o PubkeyAuthentication=no -o ConnectTimeout=5"
         key_command = (
             "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
         )
@@ -477,7 +512,7 @@ def _ship_images_to_box(tagged_references: list[str], stock_references: list[str
     bash_pipe(
         f"docker save {' '.join(save_references)}",
         "gzip",
-        f"ssh {SSH_MUX} {BOX_SSH_TARGET} 'gunzip | sudo docker load'",
+        f"ssh {SSH_OPTIONS} {BOX_SSH_TARGET} 'gunzip | sudo docker load'",
     )
 
     # The box is offline: if a reference does not resolve there after the
@@ -517,7 +552,7 @@ def _seed_camera_calibration() -> None:
         if not _calibration_is_real(calibration_path):
             _abort(CALIBRATION_PLACEHOLDER.format(serial=serial))
 
-        bash(f"scp {SSH_MUX} {calibration_path} {BOX_SSH_TARGET}:/tmp/")
+        bash(f"scp {SSH_OPTIONS} {calibration_path} {BOX_SSH_TARGET}:/tmp/")
 
     ssh_run(f"sudo install -D -m 0644 -o root -g root /tmp/SN{serial}.conf {ZED_SETTINGS_DIR}/SN{serial}.conf")
     ssh_run(f"rm /tmp/SN{serial}.conf")
