@@ -276,6 +276,18 @@ warmup can't download anything even if the SDK tries — that is the point.
   one-time delete of the live route (`ip` joins SUDOERS_RULE). The DHCP
   server serving the host is stock ISC dhcpd with a single-address pool
   (.100) — why the host's gadget address never churns.
+- **The camera-open ENOENT was a missing socket mount, not a daemon fault**
+  (bench, 2026-09-24): string extraction over the SDK lib tree
+  (`grep -ao` for socket paths) found exactly one literal path —
+  `libsl_zed.so` references `/tmp/imu_daemon.sock`, served on the host by
+  stock `IMU_Daemon.service` (IIO helper) — and compose.rig.yml never
+  mounted it. The zed_x_daemon itself binds no unix socket (its restart
+  recreated none; it speaks ZMQ over the GMSL pair). Same session exposed
+  the file-bind inode hazard live: restarting zed_x_daemon reset the GMSL
+  stack, nvargus recreated `argus_socket`, and the container kept the dead
+  inode → ECONNREFUSED until recreation. Fix: the fourth bind plus the
+  inode caveat comment on the group; `wait_for_zed_camera.py` gates on all
+  four sockets. Diagnostic trail: `diagnose-box-camera.sh`.
 
 **Open — bench verification gate (P1, operator + box; items gate their phases)**
 1. ~~Operator-host sandbox → `169.254.0.1` reachability~~ **Resolved — NO by default**
