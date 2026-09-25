@@ -48,7 +48,7 @@ jobs:
           enable-cache: true
 
       - name: Publish plan dry run
-        run: uvx --from release-devkit==0.1.11 publish-stable --config build/publish-config.json --dry-run
+        run: uvx --from release-devkit==0.1.13 publish-stable --config build/publish-config.json --dry-run
 
   mirror:
     needs: [check]
@@ -143,4 +143,4 @@ jobs:
       - name: Ensure release PR exists
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.11 ensure-release-pr
+        run: uvx --from release-devkit==0.1.13 ensure-release-pr
