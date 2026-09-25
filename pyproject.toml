@@ -33,6 +33,9 @@ deptry-exclude = ["packages/generated/*"]
 
 [tool.docker-devkit.lifecycle]
 
+[tool.docker-devkit.mirror]
+prefix = "ghcr.io/outernet-foundation/mirror"
+
 [tool.basedpyright]
 venvPath = "."
 venv = ".venv"
