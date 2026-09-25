@@ -17,7 +17,7 @@ uv run compile-unity --project CaptureTool --build android-mobile
 adb install -r apps/CaptureTool/Build/<ProductName>.apk   # path is printed at end of build
 ```
 
-Both `--project` and `--build` are required (no defaults). `--project` is the name of a Unity project directory containing a `unity-build.json` manifest; `--build` keys are the manifest's entries under `builds`. The command preps NuGet/dotnet tools, builds Unity in batchmode via the project's registered `executeMethod`, streams the log, and prints the produced APK path on success. Use the same command for a "did this `.cs` change compile?" sanity check — Unity bails fast on `error CS####` before the Android build starts.
+Both `--project` and `--build` are required (no defaults). `--project` is a catalog key in the root `unity-devkit.json`; `--build` keys are that entry's `builds` values. The command preps NuGet/dotnet tools, builds Unity in batchmode via the entry's registered `executeMethod`, streams the log, and prints the produced APK path on success. Use the same command for a "did this `.cs` change compile?" sanity check — Unity bails fast on `error CS####` before the Android build starts.
 
 The CI-side `uv run build-unity` is a different entry point (cache, license, OCI registry, version tags) and is not usable from a slot. Don't reach for it.
 
@@ -35,7 +35,7 @@ The Pixel has one USB-C port. In end-to-end testing the ZED cable occupies it, w
 
 `LogcatRelay` (`Assets/Scripts/LogcatRelay.cs`) tails Android's logcat in a background thread and forwards filtered lines (USB / accessory framework tags) through Serilog into the existing Loki sink, so phone-side diagnosis of `UsbHostManager` / `UsbDeviceManager` decisions does not require swapping the debug cable. The reader runs unconditionally, but the kernel only exposes other processes' lines to apps holding `android.permission.READ_LOGS`. That permission is `signature|privileged|development`, so install-time grant is impossible; the `development` flag is what lets `pm grant` satisfy it at runtime.
 
-After every fresh install of the Capture Tool, the grant has to be re-applied — it persists across reboots and app launches but is lost on uninstall. `uv run install --project CaptureTool` does this automatically: the project's `grant_permissions: ["android.permission.READ_LOGS"]` entry in `apps/CaptureTool/unity-build.json` drives a post-install `adb shell pm grant` call. Pass `--no-grant-permissions` to opt out for a specific install (rare; the grant is harmless when LogcatRelay isn't actively used).
+After every fresh install of the Capture Tool, the grant has to be re-applied — it persists across reboots and app launches but is lost on uninstall. `uv run install --project CaptureTool` does this automatically: the `grant_permissions: ["android.permission.READ_LOGS"]` entry in the root `unity-devkit.json` catalog drives a post-install `adb shell pm grant` call. Pass `--no-grant-permissions` to opt out for a specific install (rare; the grant is harmless when LogcatRelay isn't actively used).
 
 `uv run install --build --project CaptureTool` builds, installs, and applies the grant in one step (same `grant_permissions` path as above) — prefer it for local deploys. Only when you've hand-built with `uv run compile-unity` + `adb install` does the grant have to be applied manually:
 
