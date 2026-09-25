@@ -12,14 +12,14 @@ dev = [
     "basedpyright>=1.39.10,<1.40",
     "ruff>=0.14.11,<0.15",
     "pytest>=8.0.0",
-    "docker-devkit>=0.1.0",
+    "docker-devkit>=0.1.15",
     "unity-devkit>=0.1.0",
     "openapi-client-codegen>=0.1.0",
     "python-devkit>=0.1.0",
 ]
 
 [tool.uv.workspace]
-members = ["docker/aoa-bridge", "docker/zed-capture", "scripts"]
+members = ["workloads/aoa-bridge", "workloads/zed-capture", "scripts"]
 
 [tool.uv]
 required-version = "==0.12.15"
@@ -31,16 +31,21 @@ scripts = { workspace = true }
 sync-args = ["--all-packages"]
 deptry-exclude = ["packages/generated/*"]
 
+[tool.docker-devkit.lifecycle]
+
+[tool.docker-devkit.mirror]
+prefix = "ghcr.io/outernet-foundation/mirror"
+
 [tool.basedpyright]
 venvPath = "."
 venv = ".venv"
 typeCheckingMode = "strict"
 include = [
-    "docker/**/src/**/*.py",
-    "docker/**/src/**/*.pyi",
+    "workloads/**/src/**/*.py",
+    "workloads/**/src/**/*.pyi",
     "scripts/**/src/**/*.py",
     "scripts/**/src/**/*.pyi",
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["docker/zed-capture/tests"]
+testpaths = ["workloads/zed-capture/tests"]

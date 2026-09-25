@@ -4,16 +4,16 @@ The capture tier of [Placeframe](https://github.com/outernet-foundation/placefra
 
 ## Commands
 
-All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-devkit`, `openapi-client-codegen`, `release-devkit`) are PyPI dependencies of the dev group — no local tool code.
+All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-devkit`, `openapi-client-codegen`) are PyPI dependencies of the dev group; `release-devkit` is uvx-invoked by CI only — no local tool code.
 
 - `uv run install-zed` — end-to-end SSH deploy of the box stack (see `scripts/AGENTS.md`). `--build` cross-compiles images locally instead of pulling from ghcr.
 - `uv run install --build --project CaptureTool` — build the APK and install it on the host-attached phone with the `READ_LOGS` grant applied (unity-devkit). `uv run compile-unity --project CaptureTool --build android-mobile` for a build-only sanity check.
-- `uv run build --bake-file compose.zed.bake.yml --targets zed-capture --targets aoa-bridge --targets aoa-gateway [--mode ci --gpu none]` — bake the arm64 box images (docker-devkit). Needs QEMU + buildx on non-arm64 hosts.
+- `uv run build --targets zed-capture --targets aoa-bridge --targets aoa-gateway [--mode ci --gpu none]` — bake the arm64 box images per `workloads/images.yml` (docker-devkit). Needs QEMU + buildx on non-arm64 hosts.
 - `uv run openapi-client-codegen --config build/openapi-projects.json` — regenerate the zed-capture C# client from the service's OpenAPI spec. Needs Java 11+ on PATH.
-- `uvx --from python-devkit preflight-python` — the full check battery CI runs (sync, ruff, basedpyright, deptry, lock checks, pytest). CI's check job appends the codegen staleness guard (`openapi-client-codegen` + `git diff --exit-code -- packages/generated docker/zed-capture/openapi.json`).
+- `uvx --from python-devkit preflight-python` — the full check battery CI runs (sync, ruff, basedpyright, deptry, lock checks, pytest). CI's check job appends the codegen staleness guard (`openapi-client-codegen` + `git diff --exit-code -- packages/generated workloads/zed-capture/openapi.json`).
 - Quick checks: `uv run ruff check .`, `uv run basedpyright`, `uv run pytest` (zed tests run against the stub; no camera needed).
 
-**Codegen commit hygiene**: regenerated artifacts under `packages/generated/` and `docker/zed-capture/openapi.json` live in their own dedicated commit, message exactly `Run generate-clients` — no body, no rationale.
+**Codegen commit hygiene**: regenerated artifacts under `packages/generated/` and `workloads/zed-capture/openapi.json` live in their own dedicated commit, message exactly `Run generate-clients` — no body, no rationale.
 
 ## Branches and release
 
@@ -25,16 +25,16 @@ All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-de
 |---|---|---|
 | Capture tar (`rig*/frames.csv` + stereo JPEGs + factory calibration) | box → placeframe reconstructor, **cross-repo** | wire types in `placeframe-core` (PyPI) |
 | zed-capture REST API | box → phone, field-deploy; committed `openapi.json` is the compat gate | this repo (spec + generated client) |
-| AOA transport (h2c prior-knowledge over accessory FD → 127.0.0.1:9000) | phone ↔ box, field-deploy | this repo (`docker/aoa-bridge` + phone handler) |
+| AOA transport (h2c prior-knowledge over accessory FD → 127.0.0.1:9000) | phone ↔ box, field-deploy | this repo (`workloads/aoa-bridge` + phone handler) |
 | Log drain (box-clock semantics, restamp at push boundary) | box → phone intra-repo; ingestion edge **cross-repo** | split: box-clock/restamp here; ingestion edge in placeframe |
 
 **Compat policy (paired versions)**: a change to any shared surface (zed-capture API, AOA transport, log-drain semantics) ships phone and box together as a matched pair; mismatches are unsupported, not engineered against, and there is no additive-only CI gate. Phone-only changes never require a box update. One authoritative home per contract, referenced — never duplicated — by subsystem docs.
 
 ## Workspace shape
 
-`uv` workspace: `docker/zed-capture` (service `zed`), `docker/aoa-bridge`, `scripts`. `zed` exact-pins `placeframe-common`/`placeframe-core` from PyPI — only `-dev.<ci-run-id>` builds exist; repin deliberately (both, same run id). No `[tool.uv.sources]` beyond the local `scripts` member: every dependency resolves from PyPI, which is the point of the extraction.
+`uv` workspace: `workloads/zed-capture` (service `zed`), `workloads/aoa-bridge`, `scripts`. `zed` exact-pins `placeframe-common`/`placeframe-core` from PyPI — only `-dev.<ci-run-id>` builds exist; repin deliberately (both, same run id). No `[tool.uv.sources]` beyond the local `scripts` member: every dependency resolves from PyPI, which is the point of the extraction.
 
-Box observability (loki/alloy) consumes **stock mirror images** digest-pinned via `.env.lock` (`LOKI_DIGEST`/`ALLOY_DIGEST`), mounted with compose `configs:` — no wrapper images exist here. The mirror namespace is org-shared; `mirror-images` (release-devkit) populates it in CI before every build. `.env.lock` is hand-maintained and `merge=ours`.
+Box observability (loki/alloy) consumes **stock mirror images** declared in `workloads/images.yml` `x-base-images` (`LOKI_IMAGE`/`ALLOY_IMAGE`) and pinned via `workloads/images.lock` (`NAME=path:tag@sha256:…`, regenerated by `uv run build --lock-only`), mounted with compose `configs:` — no wrapper images exist here. The mirror namespace is org-shared; `mirror-images` (release-devkit) populates it in CI before every build from the same declarations. `workloads/images.lock` carries the `merge=ours` git attribute.
 
 ## Sandbox notes (COI)
 
@@ -47,6 +47,6 @@ Box observability (loki/alloy) consumes **stock mirror images** digest-pinned vi
 ## Subsystem docs
 
 - `apps/CaptureTool/AGENTS.md` — the phone app, AOA HTTP path, Unity invocation.
-- `docker/zed-capture/AGENTS.md` — the capture service actor, box constraints, `frames.csv` schema.
-- `docker/aoa-bridge/AGENTS.md` — the USB accessory handshake daemon.
+- `workloads/zed-capture/AGENTS.md` — the capture service actor, box constraints, `frames.csv` schema.
+- `workloads/aoa-bridge/AGENTS.md` — the USB accessory handshake daemon.
 - `scripts/AGENTS.md` — `install-zed` and the box deploy constraints.

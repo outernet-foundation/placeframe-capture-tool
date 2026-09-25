@@ -7,6 +7,6 @@
   "license_spdx": "Apache-2.0",
   "repository_url": "https://github.com/outernet-foundation/placeframe-capture-tool.git",
   "projects": {
-    "docker/zed-capture": ["csharp"]
+    "workloads/zed-capture": ["csharp"]
   }
 }

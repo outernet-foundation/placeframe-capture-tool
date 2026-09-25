@@ -17,7 +17,7 @@
       "hash": "2e993ff18f28c931602a07292df0b0804eebef99"
     },
     "com.fofx.nessle": {
-      "version": "https://github.com/outernet-foundation/Nessle.git?path=Assets/Package/Core",
+      "version": "https://github.com/outernet-foundation/Nessle.git?path=Assets/Package/Core#bbfc1f570e060a2332cfac5b4d897fdfbba404f5",
       "depth": 0,
       "source": "git",
       "dependencies": {
@@ -26,14 +26,14 @@
       "hash": "bbfc1f570e060a2332cfac5b4d897fdfbba404f5"
     },
     "com.fofx.observething": {
-      "version": "https://github.com/outernet-foundation/ObserveThing.git?path=Assets/Package/Core",
+      "version": "https://github.com/outernet-foundation/ObserveThing.git?path=Assets/Package/Core#db5c2929584d9b8d6f18f6d10d50ed971e284965",
       "depth": 0,
       "source": "git",
       "dependencies": {},
       "hash": "db5c2929584d9b8d6f18f6d10d50ed971e284965"
     },
     "com.fofx.stateful": {
-      "version": "https://github.com/epjecha/StatefulUnity.git?path=Assets/Package",
+      "version": "https://github.com/epjecha/StatefulUnity.git?path=Assets/Package#143decb1a5f493aec8832e2dbd64a10da5978113",
       "depth": 0,
       "source": "git",
       "dependencies": {},

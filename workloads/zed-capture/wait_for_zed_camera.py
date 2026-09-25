@@ -3,11 +3,17 @@ from socket import AF_UNIX, SOCK_STREAM, socket
 from sys import stderr
 from time import monotonic, sleep
 
-# The SDK reaches the sensors through all three: argus_socket is nvargus-daemon;
-# nvscsock and camsock are the zed_x_daemon (GMSL) sockets. Waiting only on argus
-# lets a Camera.open race zed_x_daemon, which surfaces as "Failed to connect to
-# zed_x_daemon" / CAMERA STREAM FAILED TO START.
-CAMERA_SOCKETS = (Path("/tmp/argus_socket"), Path("/tmp/nvscsock"), Path("/tmp/camsock"))
+# The SDK reaches the sensors through all four: argus_socket is nvargus-daemon;
+# nvscsock and camsock are the zed_x_daemon (GMSL) sockets; imu_daemon.sock is
+# IMU_Daemon's and the only socket path compiled into libsl_zed.so — without
+# it Camera.open fails with "Failed to connect to daemon socket" (ENOENT) and
+# CAMERA MOTION SENSORS NOT DETECTED.
+CAMERA_SOCKETS = (
+    Path("/tmp/argus_socket"),
+    Path("/tmp/nvscsock"),
+    Path("/tmp/camsock"),
+    Path("/tmp/imu_daemon.sock"),
+)
 VIDEO_NODES = (Path("/dev/video0"), Path("/dev/video1"))
 TIMEOUT_SECONDS = 60.0
 POLL_INTERVAL_SECONDS = 0.5

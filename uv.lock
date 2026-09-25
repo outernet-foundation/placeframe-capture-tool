@@ -44,7 +44,7 @@ wheels = [
 [[package]]
 name = "aoa-bridge"
 version = "0.1.0"
-source = { editable = "docker/aoa-bridge" }
+source = { editable = "workloads/aoa-bridge" }
 dependencies = [
     { name = "libusb1" },
     { name = "python-json-logger" },
@@ -148,7 +148,7 @@ wheels = [
 
 [[package]]
 name = "docker-devkit"
-version = "0.1.9"
+version = "0.1.18"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
@@ -158,9 +158,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/d6/d3a82d0f4c099b55ba7f3f788d76fe2782f8c9329a30e7949aceeefd56fb/docker_devkit-0.1.9.tar.gz", hash = "sha256:e510f4d4f42897986f1142197f865c8f521db6b06c9608389eeb5d722553a2bd", size = 42821, upload-time = "2026-09-23T03:09:49.654Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/36/d573d4ffbc434a2ca593e47b9e314229946c31c0ac2991194fead7ae8348/docker_devkit-0.1.18.tar.gz", hash = "sha256:e1266de9d326f37b3593ee065d76a679d2d898d20c15d88d3aca942c9f6a577f", size = 60157, upload-time = "2026-09-25T15:22:32.546Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/b9/a1823df72fbdb8ba8a0d9568d8a30b59014e4dc53a56896e99c8b774443c/docker_devkit-0.1.9-py3-none-any.whl", hash = "sha256:21c9ff8020024e19bddc3f3fd5d23de0410ab6dee5f604c457c69f2b4bafc79d", size = 17883, upload-time = "2026-09-23T03:09:48.637Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/38/d27aff5c4a77714537807be9a663877134e028075655c365f6bb49eb0396/docker_devkit-0.1.18-py3-none-any.whl", hash = "sha256:20ac87e6e50da10b9dd5350b141277144fde1e15ac39f6ccd028155bec3f4e9a", size = 25486, upload-time = "2026-09-25T15:22:31.567Z" },
 ]
 
 [[package]]
@@ -668,7 +668,7 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.39.10,<1.40" },
-    { name = "docker-devkit", specifier = ">=0.1.0" },
+    { name = "docker-devkit", specifier = ">=0.1.15" },
     { name = "openapi-client-codegen", specifier = ">=0.1.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "python-devkit", specifier = ">=0.1.0" },
@@ -1002,7 +1002,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "bashrun", specifier = ">=0.1.0" },
-    { name = "docker-devkit", specifier = ">=0.1.0" },
+    { name = "docker-devkit", specifier = ">=0.1.15" },
     { name = "placeframe-common", specifier = "==0.1.0.dev35815669170" },
     { name = "typer", specifier = ">=0.15" },
 ]
@@ -1120,7 +1120,7 @@ wheels = [
 [[package]]
 name = "zed"
 version = "0.1.0"
-source = { virtual = "docker/zed-capture" }
+source = { virtual = "workloads/zed-capture" }
 dependencies = [
     { name = "litestar" },
     { name = "numpy" },
