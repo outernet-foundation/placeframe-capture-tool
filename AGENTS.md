@@ -7,7 +7,7 @@ The capture tier of [Placeframe](https://github.com/outernet-foundation/placefra
 All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-devkit`, `openapi-client-codegen`) are PyPI dependencies of the dev group; `release-devkit` is uvx-invoked by CI only — no local tool code.
 
 - `uv run install-zed` — end-to-end SSH deploy of the box stack (see `scripts/AGENTS.md`). `--build` cross-compiles images locally instead of pulling from ghcr.
-- `uv run install --build --project CaptureTool` — build the APK and install it on the host-attached phone with the `READ_LOGS` grant applied (unity-devkit). `uv run compile-unity --project CaptureTool --build android-mobile` for a build-only sanity check.
+- `uv run install --build --project CaptureTool` — build the APK and install it on the host-attached phone with the `READ_LOGS` grant applied (unity-devkit). `uv run compile-unity --project CaptureTool --build AndroidMobile` for a build-only sanity check.
 - `uv run build --targets zed-capture --targets aoa-bridge --targets aoa-gateway [--mode ci --gpu none]` — bake the arm64 box images per `workloads/images.yml` (docker-devkit). Needs QEMU + buildx on non-arm64 hosts.
 - `uv run openapi-client-codegen --config openapi-client-codegen.json` — regenerate the zed-capture C# client from the service's OpenAPI spec. Needs Java 11+ on PATH.
 - `uvx --from python-devkit preflight-python` — the full check battery CI runs (sync, ruff, basedpyright, deptry, lock checks, pytest). CI's check job appends the codegen staleness guard (`openapi-client-codegen` + `git diff --exit-code -- packages/generated workloads/zed-capture/openapi.json`).

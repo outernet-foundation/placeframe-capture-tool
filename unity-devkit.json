@@ -3,10 +3,10 @@
     "path": "apps/CaptureTool",
     "package": "com.outernet.captureapp",
     "builds": [
-      "android-mobile"
+      "AndroidMobile"
     ],
     "execute_methods": {
-      "android-mobile": "Outernet.PlayerBuild.Entry"
+      "AndroidMobile": "Outernet.PlayerBuild.Entry"
     },
     "grant_permissions": [
       "android.permission.READ_LOGS"
