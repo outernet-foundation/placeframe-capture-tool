@@ -1081,7 +1081,7 @@ wheels = [
 
 [[package]]
 name = "unity-devkit"
-version = "0.1.14"
+version = "0.1.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
@@ -1090,9 +1090,9 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/af/51/34bc12506fef90436e608a833f392c0957d32430baf471d126e1ca797e7b/unity_devkit-0.1.14.tar.gz", hash = "sha256:32998292fba965d42f71be0693a5ac6e88bd7f532219741c3d52169372a5ad26", size = 38811, upload-time = "2026-09-25T22:25:59.25Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/b2/0f28ff986498c6a8295615248e393f66e6ebb2ba846bda7320bb442c280a/unity_devkit-0.1.16.tar.gz", hash = "sha256:22465c7b8c2708353971d39ebc6e29543d20a812dfb78ecec256edc587080f5f", size = 16419, upload-time = "2026-09-27T22:38:03.562Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/50/b2/638d5dc45ca10bf764a11359739e3f80f48994a9aa824200e91dfdbef297/unity_devkit-0.1.14-py3-none-any.whl", hash = "sha256:259fd87011010b88e319951de682f4387d0dc4c824118e760c94b77c5880fe5d", size = 18641, upload-time = "2026-09-25T22:25:58.344Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/96/54a12efe0c6e903c7cae676f73171534a9c2bc5ce7c03da0d69c78d3f2cf/unity_devkit-0.1.16-py3-none-any.whl", hash = "sha256:9eb313456427e77cc16ac640574c49170618330b5887336e5d9143a53a15853d", size = 18554, upload-time = "2026-09-27T22:38:02.565Z" },
 ]
 
 [[package]]

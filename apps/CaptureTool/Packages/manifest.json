@@ -47,7 +47,7 @@
     "com.unity.xr.arcore": "6.0.6",
     "com.unity.xr.arfoundation": "6.0.6",
     "org.outernet.placeframe.apiclient": "0.1.8-dev.35547537192",
-    "org.outernet.playerbuild": "file:../../../../unity-devkit/packages/unity/PlayerBuild/Assets/Package",
+    "org.outernet.playerbuild": "0.1.1",
     "org.outernet.placeframe.zedcaptureclient": "file:../../../packages/generated/csharp/zed-capture-client/src/PlaceframeZedCaptureClient",
     "org.outernet.logging": "0.1.0-dev.35547537192",
     "org.outernet.placeframe": "1.0.6-dev.35547537192",
