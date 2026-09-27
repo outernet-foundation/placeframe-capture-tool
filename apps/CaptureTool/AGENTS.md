@@ -35,7 +35,7 @@ The Pixel has one USB-C port. In end-to-end testing the ZED cable occupies it, w
 
 `LogcatRelay` (`Assets/Scripts/LogcatRelay.cs`) tails Android's logcat in a background thread and forwards filtered lines (USB / accessory framework tags) through Serilog into the existing Loki sink, so phone-side diagnosis of `UsbHostManager` / `UsbDeviceManager` decisions does not require swapping the debug cable. The reader runs unconditionally, but the kernel only exposes other processes' lines to apps holding `android.permission.READ_LOGS`. That permission is `signature|privileged|development`, so install-time grant is impossible; the `development` flag is what lets `pm grant` satisfy it at runtime.
 
-After every fresh install of the Capture Tool, the grant has to be re-applied — it persists across reboots and app launches but is lost on uninstall. `uv run install --project CaptureTool` does this automatically: the `grant_permissions: ["android.permission.READ_LOGS"]` entry in the root `unity-devkit.json` catalog drives a post-install `adb shell pm grant` call. Pass `--no-grant-permissions` to opt out for a specific install (rare; the grant is harmless when LogcatRelay isn't actively used).
+After every fresh install of the Capture Tool, the grant has to be re-applied — it persists across reboots and app launches but is lost on uninstall. The install tool no longer grants it (device-state setup ruled out of the installer's scope): apply it by hand after installing —
 
 `uv run install --build --project CaptureTool` builds, installs, and applies the grant in one step (same `grant_permissions` path as above) — prefer it for local deploys. Only when you've hand-built with `uv run compile-unity` + `adb install` does the grant have to be applied manually:
 
