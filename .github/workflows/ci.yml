@@ -74,15 +74,34 @@ jobs:
       - name: Populate image mirror
         run: uvx --from docker-devkit==0.1.18 mirror
 
+  resolve-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Resolve build version
+        id: version
+        run: echo "version=$(uvx --from release-devkit==0.1.17 app-build-version --app CaptureTool)" >> "$GITHUB_OUTPUT"
+
   unity:
-    needs: [check]
+    needs: [check, resolve-version]
     permissions:
       contents: read
       packages: write
-    uses: outernet-foundation/unity-devkit/.github/workflows/unity-build.yml@cfd487e0e19b3d98046a2680a210137ec0d32832
+    uses: outernet-foundation/unity-devkit/.github/workflows/unity-build.yml@f5e2221
     with:
       runner-labels: '["self-hosted","unity"]'
-      build-env: CONFIG_TYPE=default
+      version: ${{ needs.resolve-version.outputs.version }}
     secrets: inherit
 
   build-zed:

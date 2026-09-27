@@ -1,16 +1,8 @@
 {
   "CaptureTool": {
     "path": "apps/CaptureTool",
-    "package": "com.outernet.captureapp",
     "builds": [
       "AndroidMobile"
-    ],
-    "execute_methods": {
-      "AndroidMobile": "Outernet.PlayerBuild.Entry"
-    },
-    "grant_permissions": [
-      "android.permission.READ_LOGS"
-    ],
-    "tag_prefix": "capture-tool"
+    ]
   }
 }
