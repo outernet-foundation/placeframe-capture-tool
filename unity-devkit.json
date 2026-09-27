@@ -6,7 +6,7 @@
       "android-mobile"
     ],
     "execute_methods": {
-      "android-mobile": "Placeframe.Client.Build.BuildForAndroidMobile"
+      "android-mobile": "Outernet.PlayerBuild.Entry"
     },
     "grant_permissions": [
       "android.permission.READ_LOGS"
