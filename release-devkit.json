@@ -1,12 +1,9 @@
 {
-  "apps": [
-    {
-      "name": "CaptureTool",
+  "apps": {
+    "capture-tool": {
       "path": "apps/CaptureTool",
-      "major_minor": "1.0",
-      "tag_prefix": "capture-tool",
-      "display_name": "Capture Tool"
+      "major_minor": "1.0"
     }
-  ],
+  },
   "ci_workflow": "ci.yml"
 }
