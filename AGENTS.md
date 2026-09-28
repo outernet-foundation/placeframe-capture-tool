@@ -1,6 +1,6 @@
 # placeframe-capture-tool
 
-The capture tier of [Placeframe](https://github.com/outernet-foundation/placeframe), extracted as a standalone repo: the phone-side Unity CaptureTool app and the ZED-box appliance (zed-capture service, AOA bridge/gateway, box observability). One repo, not a phone/box pair — the AOA tether couples them, and `PlaceframeZedCaptureClient`'s only consumer stays co-located. placeframe remains the server stack; the two repos join via registry pins (PyPI `placeframe-common`/`placeframe-core`, npm/nuget clients) on independent cadences.
+The capture tier of [Placeframe](https://github.com/outernet-foundation/placeframe), extracted as a standalone repo: the phone-side Unity CaptureTool app and the ZED-box appliance (zed-capture service, AOA bridge/gateway, box observability). One repo, not a phone/box pair — the AOA tether couples them, and `PlaceframeZedCaptureClient`'s only consumer stays co-located. placeframe remains the server stack; the two repos join via PyPI registry pins (`placeframe-common`/`placeframe-core`) on independent cadences — the zed-capture client never crosses the repo boundary (consumed via `file:`, never published).
 
 ## Commands
 
@@ -17,7 +17,7 @@ All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-de
 
 ## Branches and release
 
-`main` = release (default branch), `dev` = working. CI runs on pushes to both and on PRs to `main`. The `Release` workflow (`release.yml`) publishes the dev channel (`-dev.<ci-run-id>` prereleases of the zed-capture client) via `workflow_run` after CI succeeds on `dev`; stable releases ride the release-PR → `main` flow (APK on GitHub Releases, client on npm+nuget, box images on GHCR). npm trusted publishers bind to the workflow **filename** — `release.yml` must never be renamed, and dev + stable must stay in that one file.
+`main` = release (default branch), `dev` = working. CI runs on pushes to both and on PRs to `main`. The `Release` workflow (`release.yml`) cuts the stable CaptureTool release on the release-PR → `main` flow (APK on GitHub Releases, box images on GHCR). There is no dev channel — the zed-capture client is intra-repo, so nothing publishes on green `dev` pushes.
 
 ## Contracts
 
