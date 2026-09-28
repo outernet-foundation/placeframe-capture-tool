@@ -12,14 +12,26 @@ services:
       - zed-state:/var/lib/zed-capture
       - /usr/local/zed/settings:/usr/local/zed/settings
       - /usr/local/zed/resources:/usr/local/zed/resources
+      # SDK IPC, one file bind per socket: argus_socket is nvargus-daemon,
+      # nvscsock + camsock are the zed_x_daemon (GMSL) pair, imu_daemon.sock
+      # is IMU_Daemon and the only socket path compiled into libsl_zed.so —
+      # leaving it unmounted makes Camera.open fail with "Failed to connect
+      # to daemon socket" (ENOENT) and CAMERA MOTION SENSORS NOT DETECTED.
+      # File binds pin the inode at container creation: a host daemon restart
+      # recreates its socket and the container keeps the dead inode
+      # (ECONNREFUSED) until the container is recreated.
       - /tmp/argus_socket:/tmp/argus_socket
       - /tmp/nvscsock:/tmp/nvscsock
       - /tmp/camsock:/tmp/camsock
+      - /tmp/imu_daemon.sock:/tmp/imu_daemon.sock
     environment:
       ZED_BOX_ID: ${ZED_BOX_ID:?err}
       DEPLOYMENT_ENVIRONMENT: production
       SERVICE_VERSION: ${ZED_CAPTURE_SHA:?err}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4317
+      # The box is offline by design; any SDK download attempt (calibration,
+      # AI models) must fail fast instead of hanging on a dead route.
+      ZED_SDK_DISABLE_DOWNLOAD: "1"
     # "no" so dockerd never starts a container on its own. Any policy other than
     # "no" makes dockerd restart a was-running container on daemon startup (after
     # an unclean power-cut the container object survives in running state), which
@@ -63,7 +75,7 @@ services:
   # expose the HTTP API. Stock mirror image, digest-pinned; the box-specific
   # config ships beside this compose file and mounts via configs:.
   aoa-loki:
-    image: ghcr.io/outernet-foundation/mirror/docker.io/grafana/loki${LOKI_DIGEST:?err}
+    image: ${LOKI_IMAGE:?err}
     network_mode: host
     volumes:
       - aoa-loki:/loki
@@ -78,7 +90,7 @@ services:
   # single mirror of the main stack's — LOKI_WRITE_ENDPOINT drives the only
   # per-stack difference.
   aoa-alloy:
-    image: ghcr.io/outernet-foundation/mirror/docker.io/grafana/alloy${ALLOY_DIGEST:?err}
+    image: ${ALLOY_IMAGE:?err}
     network_mode: host
     environment:
       LOKI_WRITE_ENDPOINT: http://127.0.0.1:3100/loki/api/v1/push

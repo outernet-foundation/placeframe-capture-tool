@@ -26,12 +26,15 @@ namespace Placeframe.Client
             }
             else
             {
-                var baked = Resources.Load<TextAsset>("default-settings");
+                var baked = Resources.Load<CaptureEnv>("CaptureEnv");
                 if (baked != null)
                 {
                     App.ExecuteTransaction(appState =>
                     {
-                        appState.settings.FromJSON(JSONNode.Parse(baked.text));
+                        var x = appState.settings;
+                        x.apiUrl.value = baked.apiUrl;
+                        x.username.value = baked.username;
+                        x.password.value = baked.password;
                     });
                 }
                 else

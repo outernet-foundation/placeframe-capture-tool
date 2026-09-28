@@ -44,7 +44,7 @@ wheels = [
 [[package]]
 name = "aoa-bridge"
 version = "0.1.0"
-source = { editable = "docker/aoa-bridge" }
+source = { editable = "workloads/aoa-bridge" }
 dependencies = [
     { name = "libusb1" },
     { name = "python-json-logger" },
@@ -116,16 +116,16 @@ wheels = [
 
 [[package]]
 name = "ci-devkit"
-version = "0.1.8"
+version = "0.1.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/ae/4c01d8601fae40ba722f7f5933af58b923409dd4c82c6720072b9932e548/ci_devkit-0.1.8.tar.gz", hash = "sha256:193c497a1c0fc5c5b9f74de81dc65c69b5ef679ea30aa850418c9b33a56175ad", size = 40856, upload-time = "2026-09-23T03:11:43.386Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/44/baebaf67bd2972a727b31a2e596ad8af0ece7ca7c1a3f3623e2f31350212/ci_devkit-0.1.11.tar.gz", hash = "sha256:80f4922ae5d92ce2bcd37a042519a255ff2ecd2d322714f68dd8de00c5e66a99", size = 40557, upload-time = "2026-09-25T22:31:04.53Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/0b/13f23ca09bdcee12b21e8f8a9da459d002ec28fbd5f53c0e39904f4dbddf/ci_devkit-0.1.8-py3-none-any.whl", hash = "sha256:b06f89fd45072145d4a17f78a622314c3c3fc992ae6fc5e5037a4f502b8953de", size = 26233, upload-time = "2026-09-23T03:11:42.426Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/05/d993b449a680a6330663e0e8d5b4229377baf23190735ae3638a3845ae3c/ci_devkit-0.1.11-py3-none-any.whl", hash = "sha256:972548f2cf6decbb12f766b70a6aa1e0e7f6c77f8753bf4c6ef851f374ff5468", size = 25687, upload-time = "2026-09-25T22:31:03.58Z" },
 ]
 
 [[package]]
@@ -148,7 +148,7 @@ wheels = [
 
 [[package]]
 name = "docker-devkit"
-version = "0.1.9"
+version = "0.1.18"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
@@ -158,9 +158,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/d6/d3a82d0f4c099b55ba7f3f788d76fe2782f8c9329a30e7949aceeefd56fb/docker_devkit-0.1.9.tar.gz", hash = "sha256:e510f4d4f42897986f1142197f865c8f521db6b06c9608389eeb5d722553a2bd", size = 42821, upload-time = "2026-09-23T03:09:49.654Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/36/d573d4ffbc434a2ca593e47b9e314229946c31c0ac2991194fead7ae8348/docker_devkit-0.1.18.tar.gz", hash = "sha256:e1266de9d326f37b3593ee065d76a679d2d898d20c15d88d3aca942c9f6a577f", size = 60157, upload-time = "2026-09-25T15:22:32.546Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/b9/a1823df72fbdb8ba8a0d9568d8a30b59014e4dc53a56896e99c8b774443c/docker_devkit-0.1.9-py3-none-any.whl", hash = "sha256:21c9ff8020024e19bddc3f3fd5d23de0410ab6dee5f604c457c69f2b4bafc79d", size = 17883, upload-time = "2026-09-23T03:09:48.637Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/38/d27aff5c4a77714537807be9a663877134e028075655c365f6bb49eb0396/docker_devkit-0.1.18-py3-none-any.whl", hash = "sha256:20ac87e6e50da10b9dd5350b141277144fde1e15ac39f6ccd028155bec3f4e9a", size = 25486, upload-time = "2026-09-25T15:22:31.567Z" },
 ]
 
 [[package]]
@@ -668,7 +668,7 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.39.10,<1.40" },
-    { name = "docker-devkit", specifier = ">=0.1.0" },
+    { name = "docker-devkit", specifier = ">=0.1.15" },
     { name = "openapi-client-codegen", specifier = ">=0.1.0" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "python-devkit", specifier = ">=0.1.0" },
@@ -1002,7 +1002,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "bashrun", specifier = ">=0.1.0" },
-    { name = "docker-devkit", specifier = ">=0.1.0" },
+    { name = "docker-devkit", specifier = ">=0.1.15" },
     { name = "placeframe-common", specifier = "==0.1.0.dev35815669170" },
     { name = "typer", specifier = ">=0.15" },
 ]
@@ -1081,7 +1081,7 @@ wheels = [
 
 [[package]]
 name = "unity-devkit"
-version = "0.1.10"
+version = "0.1.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
@@ -1090,9 +1090,9 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d9/89/53629ee52e8648da4f3665937a9101d9cdb9c56ad380b15b4411f94e5e5a/unity_devkit-0.1.10.tar.gz", hash = "sha256:3faf44b18bea255e37b283e5306d8fdda7159b5b513f7add24073774eb57eb3c", size = 35438, upload-time = "2026-09-23T03:10:55.272Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/b2/0f28ff986498c6a8295615248e393f66e6ebb2ba846bda7320bb442c280a/unity_devkit-0.1.16.tar.gz", hash = "sha256:22465c7b8c2708353971d39ebc6e29543d20a812dfb78ecec256edc587080f5f", size = 16419, upload-time = "2026-09-27T22:38:03.562Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/7f/6353d17f369b7a505add88d3675f3a9b0340607ca3aa370230009dedfd34/unity_devkit-0.1.10-py3-none-any.whl", hash = "sha256:a443746460c32fdeaab2c8f57d0fd7c53bdb2348239ee9ea30f0f252deb4b75c", size = 18054, upload-time = "2026-09-23T03:10:54.493Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/96/54a12efe0c6e903c7cae676f73171534a9c2bc5ce7c03da0d69c78d3f2cf/unity_devkit-0.1.16-py3-none-any.whl", hash = "sha256:9eb313456427e77cc16ac640574c49170618330b5887336e5d9143a53a15853d", size = 18554, upload-time = "2026-09-27T22:38:02.565Z" },
 ]
 
 [[package]]
@@ -1120,7 +1120,7 @@ wheels = [
 [[package]]
 name = "zed"
 version = "0.1.0"
-source = { virtual = "docker/zed-capture" }
+source = { virtual = "workloads/zed-capture" }
 dependencies = [
     { name = "litestar" },
     { name = "numpy" },

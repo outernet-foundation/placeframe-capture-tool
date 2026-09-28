@@ -18,7 +18,6 @@
 .vs
 .act
 .env
-.env.shas
 .secrets
 tidy-commits.json
 .build-version.json

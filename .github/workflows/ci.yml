@@ -29,8 +29,26 @@ jobs:
 
       - name: Codegen staleness
         run: |
-          uv run --no-sync openapi-client-codegen --config build/openapi-projects.json
-          git diff --exit-code -- packages/generated docker/zed-capture/openapi.json
+          uv run --no-sync openapi-client-codegen --config openapi-client-codegen.json
+          git diff --exit-code -- packages/generated workloads/zed-capture/openapi.json
+
+  manifest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Publish plan dry run
+        run: uvx --from release-devkit==0.1.14 publish-stable --config release-devkit.json --dry-run
 
   mirror:
     needs: [check]
@@ -54,17 +72,36 @@ jobs:
         run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Populate image mirror
-        run: uvx --from release-devkit==0.1.7 mirror-images --config build/publish-config.json
+        run: uvx --from docker-devkit==0.1.18 mirror
+
+  resolve-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Resolve build version
+        id: version
+        run: echo "version=$(uvx --from release-devkit==0.1.17 app-build-version --app CaptureTool)" >> "$GITHUB_OUTPUT"
 
   unity:
-    needs: [check]
+    needs: [check, resolve-version]
     permissions:
       contents: read
       packages: write
-    uses: outernet-foundation/unity-devkit/.github/workflows/unity-build.yml@cfd487e0e19b3d98046a2680a210137ec0d32832
+    uses: outernet-foundation/unity-devkit/.github/workflows/build-unity.yml@b61dc72900682113f659f4f47e8f821a327f6f9a
     with:
       runner-labels: '["self-hosted","unity"]'
-      build-env: CONFIG_TYPE=default
+      version: ${{ needs.resolve-version.outputs.version }}
     secrets: inherit
 
   build-zed:
@@ -99,27 +136,23 @@ jobs:
           echo "$GITHUB_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build
-        run: uv run --no-sync build --mode ci --gpu none --bake-file compose.zed.bake.yml --targets zed-capture --targets aoa-bridge --targets aoa-gateway
+        run: uv run --no-sync build --mode ci --gpu none --targets zed-capture --targets aoa-bridge --targets aoa-gateway
 
-      - name: Upload .env.lock
+      - name: Upload images.lock
         uses: actions/upload-artifact@v6
         with:
-          name: env-lock-zed
-          path: .env.lock
+          name: images-lock-zed
+          path: workloads/images.lock
           include-hidden-files: true
 
   ensure-release-pr:
-    needs: [unity, build-zed]
+    needs: [unity, build-zed, manifest]
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - name: Generate app token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.PLACEFRAME_CI_APP_ID }}
-          private-key: ${{ secrets.PLACEFRAME_CI_PRIVATE_KEY }}
-
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -128,5 +161,5 @@ jobs:
 
       - name: Ensure release PR exists
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: uvx --from release-devkit==0.1.7 ensure-release-pr
+          GH_TOKEN: ${{ github.token }}
+        run: uvx --from release-devkit==0.1.14 ensure-release-pr

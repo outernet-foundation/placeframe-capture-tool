@@ -1,0 +1,8 @@
+{
+  "CaptureTool": {
+    "path": "apps/CaptureTool",
+    "builds": [
+      "AndroidMobile"
+    ]
+  }
+}
