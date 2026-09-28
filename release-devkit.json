@@ -1,15 +1,4 @@
 {
-  "packages": [
-    {
-      "name": "placeframe-zed-capture-client",
-      "path": "packages/generated/csharp/zed-capture-client/src/PlaceframeZedCaptureClient",
-      "major_minor": "1.0",
-      "registries": {
-        "nuget": "PlaceframeZedCaptureClient",
-        "npm": "org.outernet.placeframe.zedcaptureclient"
-      }
-    }
-  ],
   "apps": [
     {
       "name": "CaptureTool",
