@@ -98,7 +98,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: outernet-foundation/unity-devkit/.github/workflows/build-unity.yml@69e621f52fbdc7c988e69b08daaf4134f6cc68ef
+    uses: outernet-foundation/unity-devkit/.github/workflows/build-unity.yml@b61dc72900682113f659f4f47e8f821a327f6f9a
     with:
       runner-labels: '["self-hosted","unity"]'
       version: ${{ needs.resolve-version.outputs.version }}
