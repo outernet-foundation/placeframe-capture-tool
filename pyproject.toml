@@ -12,9 +12,9 @@ dev = [
     "basedpyright>=1.39.10,<1.40",
     "ruff>=0.14.11,<0.15",
     "pytest>=8.0.0",
-    "docker-devkit>=0.1.15",
+    "docker-devkit>=0.1.19",
     "unity-devkit>=0.1.18",
-    "openapi-client-codegen>=0.1.0",
+    "openapi-client-codegen>=0.1.12",
     "python-devkit>=0.1.0",
 ]
 
@@ -30,11 +30,6 @@ scripts = { workspace = true }
 [tool.python-devkit.preflight]
 sync-args = ["--all-packages"]
 deptry-exclude = ["packages/generated/*"]
-
-[tool.docker-devkit.lifecycle]
-
-[tool.docker-devkit.mirror]
-prefix = "ghcr.io/outernet-foundation/mirror"
 
 [tool.basedpyright]
 venvPath = "."

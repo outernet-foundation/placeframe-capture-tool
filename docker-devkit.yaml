@@ -1,0 +1,3 @@
+requires: ">=0.1"
+mirror:
+  prefix: ghcr.io/outernet-foundation/mirror

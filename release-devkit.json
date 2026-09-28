@@ -1,9 +1,0 @@
-{
-  "apps": {
-    "capture-tool": {
-      "path": "apps/CaptureTool",
-      "major_minor": "1.0"
-    }
-  },
-  "ci_workflow": "ci.yml"
-}

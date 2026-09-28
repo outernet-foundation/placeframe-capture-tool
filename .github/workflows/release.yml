@@ -36,15 +36,15 @@ jobs:
       - name: Fetch CI artifacts
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.18 fetch-ci-artifacts --config release-devkit.json ${{ inputs.ci-run-id && format('--ci-run-id {0}', inputs.ci-run-id) || '' }}
+        run: uvx --from release-devkit==0.1.20 fetch-ci-artifacts --config release-devkit.yaml ${{ inputs.ci-run-id && format('--ci-run-id {0}', inputs.ci-run-id) || '' }}
 
       - name: Publish stable
         id: publish-stable
-        run: uvx --from release-devkit==0.1.18 publish-stable --config release-devkit.json --with-apps
+        run: uvx --from release-devkit==0.1.20 publish-stable --config release-devkit.yaml --with-apps
 
       # No-op events (nothing published) must not cut a release
       - name: Create GitHub Release
         if: steps.publish-stable.outputs.published == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.18 create-release --config release-devkit.json
+        run: uvx --from release-devkit==0.1.20 create-release --config release-devkit.yaml
