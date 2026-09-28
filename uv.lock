@@ -674,7 +674,7 @@ dev = [
     { name = "python-devkit", specifier = ">=0.1.0" },
     { name = "ruff", specifier = ">=0.14.11,<0.15" },
     { name = "scripts", editable = "scripts" },
-    { name = "unity-devkit", specifier = ">=0.1.0" },
+    { name = "unity-devkit", specifier = ">=0.1.18" },
 ]
 
 [[package]]
@@ -1081,7 +1081,7 @@ wheels = [
 
 [[package]]
 name = "unity-devkit"
-version = "0.1.16"
+version = "0.1.18"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
@@ -1090,9 +1090,9 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/b2/0f28ff986498c6a8295615248e393f66e6ebb2ba846bda7320bb442c280a/unity_devkit-0.1.16.tar.gz", hash = "sha256:22465c7b8c2708353971d39ebc6e29543d20a812dfb78ecec256edc587080f5f", size = 16419, upload-time = "2026-09-27T22:38:03.562Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c9/d2/495799ea8cc211ec8604847c58ab2683d5f0c617c7c284b3a5e86fa35051/unity_devkit-0.1.18.tar.gz", hash = "sha256:6b676c6eaad4e6da9d2aa1a20bddff6e2d63dd3c8b11bd40e492d51ed651502e", size = 17224, upload-time = "2026-09-28T04:05:31.995Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5e/96/54a12efe0c6e903c7cae676f73171534a9c2bc5ce7c03da0d69c78d3f2cf/unity_devkit-0.1.16-py3-none-any.whl", hash = "sha256:9eb313456427e77cc16ac640574c49170618330b5887336e5d9143a53a15853d", size = 18554, upload-time = "2026-09-27T22:38:02.565Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/59/03f14a21215f5b0894cbc333920bc2ed5541b4405501018e0ed09478eaa6/unity_devkit-0.1.18-py3-none-any.whl", hash = "sha256:9d69db4f8086f6fe33f142e2e787491484d13de0e6e60c25195c7be2ee135a9a", size = 18857, upload-time = "2026-09-28T04:05:30.959Z" },
 ]
 
 [[package]]
