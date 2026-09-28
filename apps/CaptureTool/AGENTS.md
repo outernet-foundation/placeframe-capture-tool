@@ -17,7 +17,7 @@ uv run compile-unity --project CaptureTool --build android-mobile
 adb install -r apps/CaptureTool/Build/<ProductName>.apk   # path is printed at end of build
 ```
 
-Both `--project` and `--build` are required (no defaults). `--project` is a catalog key in the root `unity-devkit.json`; `--build` keys are that entry's `builds` values. The command preps NuGet/dotnet tools, builds Unity in batchmode via the entry's registered `executeMethod`, streams the log, and prints the produced APK path on success. Use the same command for a "did this `.cs` change compile?" sanity check — Unity bails fast on `error CS####` before the Android build starts.
+Both `--project` and `--build` are required (no defaults). `--project` is the `name` field of the project's `unity-devkit.json`; `--build` keys are its `platforms` keys. The command preps NuGet/dotnet tools, builds Unity in batchmode via the entry's registered `executeMethod`, streams the log, and prints the produced APK path on success. Use the same command for a "did this `.cs` change compile?" sanity check — Unity bails fast on `error CS####` before the Android build starts.
 
 The CI-side `uv run build-unity` is a different entry point (cache, license, OCI registry, version tags) and is not usable from a slot. Don't reach for it.
 
