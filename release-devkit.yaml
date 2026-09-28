@@ -1,0 +1,6 @@
+requires: ">=0.1"
+ci_workflow: ci.yml
+apps:
+  capture-tool:
+    path: apps/CaptureTool
+    major_minor: "1.0"

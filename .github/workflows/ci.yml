@@ -29,7 +29,7 @@ jobs:
 
       - name: Codegen staleness
         run: |
-          uv run --no-sync openapi-client-codegen --config openapi-client-codegen.json
+          uv run --no-sync openapi-client-codegen --config openapi-client-codegen.yaml
           git diff --exit-code -- packages/generated workloads/zed-capture/openapi.json
 
   manifest:
@@ -48,7 +48,7 @@ jobs:
           enable-cache: true
 
       - name: Publish plan dry run
-        run: uvx --from release-devkit==0.1.14 publish-stable --config release-devkit.json --dry-run
+        run: uvx --from release-devkit==0.1.20 publish-stable --config release-devkit.yaml --dry-run
 
   mirror:
     needs: [check]
@@ -72,7 +72,7 @@ jobs:
         run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Populate image mirror
-        run: uvx --from docker-devkit==0.1.18 mirror
+        run: uvx --from docker-devkit==0.1.20 mirror
 
   resolve-version:
     runs-on: ubuntu-latest
@@ -91,7 +91,7 @@ jobs:
 
       - name: Resolve build version
         id: version
-        run: echo "version=$(uvx --from release-devkit==0.1.17 app-build-version --app CaptureTool)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(uvx --from release-devkit==0.1.20 app-build-version --app capture-tool)" >> "$GITHUB_OUTPUT"
 
   unity:
     needs: [check, resolve-version]
@@ -162,4 +162,4 @@ jobs:
       - name: Ensure release PR exists
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.14 ensure-release-pr
+        run: uvx --from release-devkit==0.1.20 ensure-release-pr

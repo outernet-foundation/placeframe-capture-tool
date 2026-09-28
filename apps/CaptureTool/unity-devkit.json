@@ -1,4 +1,5 @@
 {
+  "name": "CaptureTool",
   "environment_config": "Assets/CaptureEnv.cs",
   "platforms": {
     "AndroidMobile": {}

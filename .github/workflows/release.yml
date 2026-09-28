@@ -8,18 +8,6 @@ on:
       ci-run-id:
         description: "Override: use this CI run ID instead of looking up by SHA"
         required: false
-      dev-publish:
-        description: "Run the dev channel against this ref (manual publish; workflow_run automation needs the workflow file on the default branch)"
-        type: boolean
-        required: false
-        default: false
-      dev-run-id:
-        description: "CI run id to key dev versions to (required with dev-publish)"
-        required: false
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [dev]
 
 concurrency:
   group: release
@@ -27,11 +15,9 @@ concurrency:
 
 jobs:
   publish-stable:
-    if: github.event_name != 'workflow_run' && inputs.dev-publish != true
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
       actions: read
     steps:
       - name: Checkout
@@ -50,63 +36,15 @@ jobs:
       - name: Fetch CI artifacts
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.14 fetch-ci-artifacts --config release-devkit.json ${{ inputs.ci-run-id && format('--ci-run-id {0}', inputs.ci-run-id) || '' }}
+        run: uvx --from release-devkit==0.1.20 fetch-ci-artifacts --config release-devkit.yaml ${{ inputs.ci-run-id && format('--ci-run-id {0}', inputs.ci-run-id) || '' }}
 
       - name: Publish stable
         id: publish-stable
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-          # npm decides in silence whether to attempt the OIDC exchange; without verbose a trusted-publisher
-          # mismatch surfaces as a bare ENEEDAUTH indistinguishable from a missing token
-          NPM_CONFIG_LOGLEVEL: verbose
-        run: uvx --from release-devkit==0.1.14 publish-stable --config release-devkit.json --with-apps
+        run: uvx --from release-devkit==0.1.20 publish-stable --config release-devkit.yaml --with-apps
 
       # No-op events (nothing published) must not cut a release
       - name: Create GitHub Release
         if: steps.publish-stable.outputs.published == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: uvx --from release-devkit==0.1.14 create-release --config release-devkit.json
-
-  publish-dev:
-    # The dev channel: every green dev push publishes immutable -dev.<ci-run-id> prereleases.
-    # Runs via workflow_run (after the CI workflow succeeds on dev) so greenness is proven
-    # before anything reaches a registry — or manually via workflow_dispatch against dev (the
-    # workflow_run trigger only registers once this file reaches the default branch, so dispatch is
-    # the dev channel's trigger until the release merge lands it on main).
-    # Must stay in this workflow file: npm allows one trusted publisher per package, bound to a
-    # single workflow filename shared with the stable release jobs.
-    if: >-
-      (github.event_name == 'workflow_run'
-        && github.event.workflow_run.event == 'push'
-        && github.event.workflow_run.conclusion == 'success'
-        && github.event.workflow_run.head_branch == 'dev')
-      || (github.event_name == 'workflow_dispatch' && inputs.dev-publish == true)
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
-
-      # Workaround: fetch-tags is broken with shallow clones
-      - run: git fetch --tags origin
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-
-      - name: Publish dev prereleases
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-          # npm decides in silence whether to attempt the OIDC exchange; without verbose a trusted-publisher
-          # mismatch surfaces as a bare ENEEDAUTH indistinguishable from a missing token
-          NPM_CONFIG_LOGLEVEL: verbose
-        run: >-
-          uvx --from release-devkit==0.1.14 publish-dev
-          --config release-devkit.json
-          --run-id ${{ github.event.workflow_run.id || inputs.dev-run-id }}
+        run: uvx --from release-devkit==0.1.20 create-release --config release-devkit.yaml
