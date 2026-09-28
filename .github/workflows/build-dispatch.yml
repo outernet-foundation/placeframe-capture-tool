@@ -6,26 +6,23 @@ on:
   workflow_dispatch:
     inputs:
       environment-preset:
-        description: "Environment preset (Presets key) — empty leaves the workspace untouched"
+        description: "Preset to apply — blank leaves the workspace untouched; leave fields empty to keep the preset's values"
         type: choice
         options:
           - ""
           - "Airgapped"
-        default: ""
+        default: "Airgapped"
       development:
-        description: "Development build column"
+        description: "Development build (debug symbols)"
         type: boolean
         default: false
       apiUrl:
-        description: "environment field apiUrl (string) — empty keeps the preset value"
         type: string
         default: ""
       username:
-        description: "environment field username (string) — empty keeps the preset value"
         type: string
         default: ""
       password:
-        description: "environment field password (string) — empty keeps the preset value"
         type: string
         default: ""
 
