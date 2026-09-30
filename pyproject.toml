@@ -15,6 +15,7 @@ dev = [
     "docker-devkit>=0.1.19",
     "openapi-client-codegen>=0.1.12",
     "python-devkit>=0.1.0",
+    "unity-devkit>=0.1.23",
 ]
 
 [tool.uv.workspace]
