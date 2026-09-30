@@ -35,7 +35,7 @@ uv run install-zed
 Grab the APK from [GitHub Releases](https://github.com/outernet-foundation/placeframe-capture-tool/releases) and install it (`adb install capture-tool.apk`), or build from source with Unity 6:
 
 ```bash
-uv run compile-unity --project CaptureTool --build AndroidMobile
+uvx --from unity-devkit compile-unity --project CaptureTool --build AndroidMobile
 adb install -r apps/CaptureTool/Build/*.apk
 adb shell pm grant com.outernet.captureapp android.permission.READ_LOGS
 ```

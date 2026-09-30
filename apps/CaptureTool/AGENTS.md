@@ -8,20 +8,20 @@ Capture rows POST reconstructions with no `ReconstructionOptions` payload. The r
 
 ## Invoking Unity from a Pulsar slot
 
-Use `uv run compile-unity` for every Unity invocation; never call `/opt/unity/.../Unity` directly.
+Use `uvx --from unity-devkit compile-unity` for every Unity invocation; never call `/opt/unity/.../Unity` directly.
 
 **Build + install on the host-attached phone:**
 
 ```
-uv run compile-unity --project CaptureTool --build android-mobile
+uvx --from unity-devkit compile-unity --project CaptureTool --build android-mobile
 adb install -r apps/CaptureTool/Build/<ProductName>.apk   # path is printed at end of build
 ```
 
 Both `--project` and `--build` are required (no defaults). `--project` is the `name` field of the project's `unity-devkit.json`; `--build` keys are its `platforms` keys. The command preps NuGet/dotnet tools, builds Unity in batchmode via the entry's registered `executeMethod`, streams the log, and prints the produced APK path on success. Use the same command for a "did this `.cs` change compile?" sanity check — Unity bails fast on `error CS####` before the Android build starts.
 
-The CI-side `uv run build-unity` is a different entry point (cache, license, OCI registry, version tags) and is not usable from a slot. Don't reach for it.
+The CI-side `uvx --from unity-devkit build-unity` is a different entry point (cache, license, OCI registry, version tags) and is not usable from a slot. Don't reach for it.
 
-`compile-unity` goes through `unity_batchmode_command`, which prefixes `env -u ADB_SERVER_SOCKET` on non-Windows. Background: Unity's Android build module runs `adb kill-server` on teardown. Since every slot has `ADB_SERVER_SOCKET` forwarded to the host adb daemon (set unconditionally by `uv run agent-shell`), an unscrubbed kill propagates through the socket and terminates the *host-side* server — next `adb` call from the slot then fails with `Connection refused` until the host runs `adb -a -P 5037 start-server` again. The `env -u` strip in `unity_batchmode_command` confines Unity's adb dance to a local daemon inside the slot. Direct `/opt/unity/.../Unity` invocations bypass that guard, which is why the rule is "always `uv run compile-unity`."
+`compile-unity` goes through `unity_batchmode_command`, which prefixes `env -u ADB_SERVER_SOCKET` on non-Windows. Background: Unity's Android build module runs `adb kill-server` on teardown. Since every slot has `ADB_SERVER_SOCKET` forwarded to the host adb daemon (set unconditionally by `uv run agent-shell`), an unscrubbed kill propagates through the socket and terminates the *host-side* server — next `adb` call from the slot then fails with `Connection refused` until the host runs `adb -a -P 5037 start-server` again. The `env -u` strip in `unity_batchmode_command` confines Unity's adb dance to a local daemon inside the slot. Direct `/opt/unity/.../Unity` invocations bypass that guard, which is why the rule is "always `uvx --from unity-devkit compile-unity`."
 
 ## USB port contention when testing against the ZED box
 
@@ -37,7 +37,7 @@ The Pixel has one USB-C port. In end-to-end testing the ZED cable occupies it, w
 
 After every fresh install of the Capture Tool, the grant has to be re-applied — it persists across reboots and app launches but is lost on uninstall. The install tool no longer grants it (device-state setup ruled out of the installer's scope): apply it by hand after installing —
 
-`uv run install --build --project CaptureTool` builds, installs, and applies the grant in one step (same `grant_permissions` path as above) — prefer it for local deploys. Only when you've hand-built with `uv run compile-unity` + `adb install` does the grant have to be applied manually:
+`uvx --from unity-devkit install --build --project CaptureTool` builds, installs, and applies the grant in one step (same `grant_permissions` path as above) — prefer it for local deploys. Only when you've hand-built with `uvx --from unity-devkit compile-unity` + `adb install` does the grant have to be applied manually:
 
 ```
 adb shell pm grant com.outernet.captureapp android.permission.READ_LOGS
