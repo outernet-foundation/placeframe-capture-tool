@@ -4,20 +4,20 @@ The capture tier of [Placeframe](https://github.com/outernet-foundation/placefra
 
 ## Commands
 
-All from the repo root. The devkits (`docker-devkit`, `unity-devkit`, `python-devkit`, `openapi-client-codegen`) are PyPI dependencies of the dev group; `release-devkit` is uvx-invoked by CI only — no local tool code.
+All from the repo root. The devkits (`docker-devkit`, `python-devkit`, `openapi-client-codegen`) are PyPI dependencies of the dev group; `unity-devkit` and `release-devkit` are uvx-invoked tools — no local tool code for either.
 
 - `uv run install-zed` — end-to-end SSH deploy of the box stack (see `scripts/AGENTS.md`). `--build` cross-compiles images locally instead of pulling from ghcr.
-- `uv run install --build --project CaptureTool` — build the APK and install it on the host-attached phone (unity-devkit; the READ_LOGS grant is manual — see the app's AGENTS). `uv run compile-unity --project CaptureTool --build AndroidMobile` for a build-only sanity check.
+- `uvx --from unity-devkit install --build --project CaptureTool` — build the APK and install it on the host-attached phone (the READ_LOGS grant is manual — see the app's AGENTS). `uvx --from unity-devkit compile-unity --project CaptureTool --build AndroidMobile` for a build-only sanity check.
 - `uv run build --targets zed-capture --targets aoa-bridge --targets aoa-gateway [--mode ci --gpu none]` — bake the arm64 box images per `workloads/images.yml` (docker-devkit). Needs QEMU + buildx on non-arm64 hosts.
 - `uv run openapi-client-codegen --config openapi-client-codegen.yaml` — regenerate the zed-capture C# client from the service's OpenAPI spec. Needs Java 11+ on PATH.
-- `uvx --from python-devkit preflight-python` — the full check battery CI runs (sync, ruff, basedpyright, deptry, lock checks, pytest). CI's check job appends the codegen staleness guard (`openapi-client-codegen` + `git diff --exit-code -- packages/generated workloads/zed-capture/openapi.json`).
+- `uv run preflight-python` — the full check battery CI runs (sync, ruff, basedpyright, deptry, lock checks, pytest). CI's check job runs it then `uv run openapi-client-codegen --config openapi-client-codegen.yaml --check` (the staleness gate — regenerates and fails if the spec or generated client differs from the committed tree).
 - Quick checks: `uv run ruff check .`, `uv run basedpyright`, `uv run pytest` (zed tests run against the stub; no camera needed).
 
 **Codegen commit hygiene**: regenerated artifacts under `packages/generated/` and `workloads/zed-capture/openapi.json` live in their own dedicated commit, message exactly `Run generate-clients` — no body, no rationale.
 
 ## Branches and release
 
-`main` = release (default branch), `dev` = working. CI runs on pushes to both and on PRs to `main`. The `Release` workflow (`release.yml`) cuts the stable CaptureTool release on the release-PR → `main` flow (APK on GitHub Releases, box images on GHCR). There is no dev channel — the zed-capture client is intra-repo, so nothing publishes on green `dev` pushes.
+`main` = release (default branch), `dev` = working. `ci-cd.yml` combines CI and release: CI jobs (check, mirror, unity, build-zed, ensure-release-pr) run on `dev` pushes and PRs; `publish-stable` runs on `main` push and cuts the stable CaptureTool release (APK on GitHub Releases via `publish-stable --with-apps --fetch-ci-artifacts`, box images on GHCR built by the `build-zed` CI job). The devkits (`python-devkit`, `docker-devkit`, `openapi-client-codegen`) are PyPI dependencies, so `check` runs `uv run preflight-python` then `uv run openapi-client-codegen --check` and `mirror` runs `uv run mirror` — inline against the synced workspace, version-sourced by `uv.lock`; the publish job and `check`'s trailing steps run release-devkit's verbs as inlined `uvx --from release-devkit==${{ env.RELEASE_DEVKIT_VERSION }}` steps, version-pinned in the workflow `env:` (see release-devkit's `AGENTS.md`) — release-devkit cannot be a project dependency. `check` resolves the app build version (`app-build-version --app capture-tool`, exported as a job output) and ends with `publish-stable --dry-run`; `unity-matrix` (needs `check`) emits the build matrix plus the license tag, and the `unity` legs (name kept) run `ci-build-unity` inside `unityci/editor` containers on self-hosted unity runners — unity-devkit consumed uvx-isolated (`UNITY_DEVKIT_VERSION` pinned in the workflow `env:`), stamping the version from `check`'s output; push-only, no dispatch surface. There is no dev channel — the zed-capture client is intra-repo, so nothing publishes on green `dev` pushes.
 
 ## Contracts
 
