@@ -553,7 +553,7 @@
       "url": "https://unitynuget-registry.openupm.com"
     },
     "org.outernet.logging": {
-      "version": "0.1.0-dev.35547537192",
+      "version": "0.1.0-dev.36679369940",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -563,7 +563,7 @@
       "url": "https://registry.npmjs.org"
     },
     "org.outernet.placeframe": {
-      "version": "1.0.6-dev.35547537192",
+      "version": "1.0.6-dev.36679369940",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -575,13 +575,13 @@
         "com.unity.cloud.gltfast": "6.15.1",
         "com.unity.xr.arfoundation": "6.0.6",
         "org.nuget.mathnet.numerics": "5.0.0",
-        "org.outernet.placeframe.apiclient": "0.1.8-dev.35547537192",
+        "org.outernet.placeframe.apiclient": "0.1.8-dev.36679369940",
         "org.nuget.observablecollections.r3": "3.3.4"
       },
       "url": "https://registry.npmjs.org"
     },
     "org.outernet.placeframe.apiclient": {
-      "version": "0.1.8-dev.35547537192",
+      "version": "0.1.8-dev.36679369940",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -592,19 +592,19 @@
       "url": "https://registry.npmjs.org"
     },
     "org.outernet.placeframe.arfoundation": {
-      "version": "1.0.6-dev.35547537192",
+      "version": "1.0.6-dev.36679369940",
       "depth": 0,
       "source": "registry",
       "dependencies": {
         "com.cysharp.r3": "1.2.9",
         "com.cysharp.unitask": "2.5.10",
-        "org.outernet.placeframe": "1.0.6-dev.35547537192",
+        "org.outernet.placeframe": "1.0.6-dev.36679369940",
         "com.unity.xr.arfoundation": "6.0.6"
       },
       "url": "https://registry.npmjs.org"
     },
     "org.outernet.placeframe.auth": {
-      "version": "0.1.0-dev.35547537192",
+      "version": "0.1.0-dev.36679369940",
       "depth": 0,
       "source": "registry",
       "dependencies": {
