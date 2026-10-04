@@ -1,6 +1,12 @@
-requires: ">=0.1"
-ci_workflow: ci-cd.yml
+ci_workflow: release.yml
 apps:
   capture-tool:
     path: apps/CaptureTool
     major_minor: "1.0"
+    builds:
+      registry: ghcr.io/outernet-foundation/placeframe-capture-tool/builds
+      artifacts:
+        - project: CaptureTool
+          platform: AndroidMobile
+          file: Capture_Tool.apk
+          name: CaptureTool-AndroidMobile.apk
