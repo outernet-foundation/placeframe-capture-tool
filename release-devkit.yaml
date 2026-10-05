@@ -1,4 +1,4 @@
-ci_workflow: release.yml
+ci_workflow: integrate.yml
 apps:
   capture-tool:
     path: apps/CaptureTool
