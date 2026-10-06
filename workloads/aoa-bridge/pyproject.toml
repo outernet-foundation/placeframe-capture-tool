@@ -2,7 +2,6 @@
 name = "aoa-bridge"
 version = "0.1.0"
 description = "AOA host daemon: handshake an Android phone into accessory mode and pipe its bulk endpoints to a local TCP socket"
-readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "libusb1>=3.1.0",
