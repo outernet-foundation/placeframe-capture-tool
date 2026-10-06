@@ -141,4 +141,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ github.token }}
-      - run: uv run build --mode ci --gpu none --targets zed-capture --targets aoa-bridge --targets aoa-gateway
+      - run: >-
+          uv run build
+          --mode ci
+          --gpu none
+          --targets zed-capture
+          --targets aoa-bridge
+          --targets aoa-gateway
+          --builds-registry ghcr.io/outernet-foundation/placeframe-capture-tool/builds
+          --run-number ${{ github.run_number }}
