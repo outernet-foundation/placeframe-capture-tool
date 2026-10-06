@@ -683,7 +683,7 @@ dev = [
 
 [[package]]
 name = "placeframe-common"
-version = "0.1.0.dev35815669170"
+version = "0.1.0.dev37392360334"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -692,14 +692,14 @@ dependencies = [
     { name = "logger-conf", extra = ["otlp"] },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/aa/fed500a1b8b15589e6f4e01b42e4a9c69b4d5d4a06f9980f895b4174cd0e/placeframe_common-0.1.0.dev35815669170.tar.gz", hash = "sha256:5b101b5e6b27342b20ec4a39cf16cfa9a0b8bb824673b73fb8e926a66646234e", size = 6500, upload-time = "2026-09-23T14:42:18.642Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/7d/218bd7742d7325304e377d96459eb4bcb0bb4409a535d4a4e976ee33019d/placeframe_common-0.1.0.dev37392360334.tar.gz", hash = "sha256:576b5039b828d2b8575382d7e4e4169e61cecbcc02536832cae046de17687087", size = 6531, upload-time = "2026-10-06T00:18:44.916Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/64/a8509028c8a2326a4b6eb77bf503f901a98a647ed4a173694fc43ec59924/placeframe_common-0.1.0.dev35815669170-py3-none-any.whl", hash = "sha256:723e3ca1acea76a4afe69728202559935c9e8ad1f2c0fd604a6fa0e9bbbe8735", size = 7534, upload-time = "2026-09-23T14:42:17.753Z" },
+    { url = "https://files.pythonhosted.org/packages/11/f9/d247f44a86fac5f707bf9c9a6735cc01aff116ca4a20badb344dc1f5b77c/placeframe_common-0.1.0.dev37392360334-py3-none-any.whl", hash = "sha256:a6d38523496f9e75e083ffae06f834975474c778754309a742bf79b3d7e2f06f", size = 7548, upload-time = "2026-10-06T00:18:43.941Z" },
 ]
 
 [[package]]
 name = "placeframe-core"
-version = "0.1.0.dev35815669170"
+version = "0.1.0.dev37392360334"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "faiss-cpu" },
@@ -709,9 +709,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/8d/e023d7eeb073282f4b05f7694b97c206333cafb0e2e4f61ebf1d24af65df/placeframe_core-0.1.0.dev35815669170.tar.gz", hash = "sha256:0ac38bd611b6d2e601637c19c382a1aba8879081e1850481dae8a81de74aa93e", size = 16956, upload-time = "2026-09-23T14:45:25.2Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/12/4f879339736449e3b75d6c81a46ce91025aafe9377d0a3c1e8d01ecf87ff/placeframe_core-0.1.0.dev37392360334.tar.gz", hash = "sha256:2143e49091c03ec4f654c87d84d3dfa8dfdca51821d69011c0394c07fe073b33", size = 17045, upload-time = "2026-10-06T00:18:47.724Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/35/e2/4ecadad8d3c2184321175f01a7f84635c4e0e90173e502dbb6445a419ae0/placeframe_core-0.1.0.dev35815669170-py3-none-any.whl", hash = "sha256:26c9b236dd79bf556b43e25f7de0ec68a90a053be8ddfa701011132a9d28d3fa", size = 16517, upload-time = "2026-09-23T14:45:24.254Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/41/e71629582387548c522026f239de4b4e7fc49f924482b64e63d1c57b1f27/placeframe_core-0.1.0.dev37392360334-py3-none-any.whl", hash = "sha256:e33a255893ac83774a04ede4b9c3cfc93f8d987468c7a5927723216a8bfe1af4", size = 16538, upload-time = "2026-10-06T00:18:46.862Z" },
 ]
 
 [[package]]
@@ -1007,7 +1007,7 @@ dependencies = [
 requires-dist = [
     { name = "bashrun", specifier = ">=0.1.0" },
     { name = "docker-devkit", specifier = ">=0.1.15" },
-    { name = "placeframe-common", specifier = "==0.1.0.dev35815669170" },
+    { name = "placeframe-common", specifier = "==0.1.0.dev37392360334" },
     { name = "typer", specifier = ">=0.15" },
 ]
 
@@ -1158,8 +1158,8 @@ requires-dist = [
     { name = "litestar", specifier = ">=2.19.0" },
     { name = "numpy", specifier = ">=2.4.0" },
     { name = "pillow", specifier = ">=12.1.0" },
-    { name = "placeframe-common", specifier = "==0.1.0.dev35815669170" },
-    { name = "placeframe-core", specifier = "==0.1.0.dev35815669170" },
+    { name = "placeframe-common", specifier = "==0.1.0.dev37392360334" },
+    { name = "placeframe-core", specifier = "==0.1.0.dev37392360334" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "scipy", specifier = ">=1.16.1" },
     { name = "uvicorn", specifier = ">=0.35.0" },
