@@ -148,7 +148,7 @@ wheels = [
 
 [[package]]
 name = "docker-devkit"
-version = "0.2.1.dev37485576216"
+version = "0.2.1.dev37490360141"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
@@ -161,9 +161,9 @@ dependencies = [
     { name = "strictyaml" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/77/a5/6331837ddc4e12d36db588da3151bcbd1534e4be44d2b734167bea246152/docker_devkit-0.2.1.dev37485576216.tar.gz", hash = "sha256:4588659b5de29a37580e7313e6924961ead7d5ce8a47a978573a492418a0eda3", size = 63491, upload-time = "2026-10-06T15:15:01.672Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/ad/284f7dcf7cc65aba419c473b2b2cb9f15c1475615c6c870a7e7bc0fcc49c/docker_devkit-0.2.1.dev37490360141.tar.gz", hash = "sha256:712339963c20a2c34944a7bf3134f5b067adba229acb170e2563de50fae1886a", size = 63506, upload-time = "2026-10-06T15:48:31.875Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/cd/f62e9bcb9d4618f97e7f0915a8cfab96d0dbf057ec633593b7c26bbae18f/docker_devkit-0.2.1.dev37485576216-py3-none-any.whl", hash = "sha256:30b6b95ab7b0d238c1473f6530aa3e53ef74def4c80c1539f5912a5f5d0d7664", size = 28422, upload-time = "2026-10-06T15:15:00.679Z" },
+    { url = "https://files.pythonhosted.org/packages/86/27/4c4ad59d3918e1f1668a988bd3ca3f46703de98130c40483993fe59ecafb/docker_devkit-0.2.1.dev37490360141-py3-none-any.whl", hash = "sha256:654fe09b28d2923c644a6b3979f2bca55e3919f80d2a356431c0934e5674794c", size = 28440, upload-time = "2026-10-06T15:48:30.693Z" },
 ]
 
 [[package]]
@@ -673,7 +673,7 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.39.10,<1.40" },
-    { name = "docker-devkit", specifier = "==0.2.1.dev37485576216" },
+    { name = "docker-devkit", specifier = "==0.2.1.dev37490360141" },
     { name = "openapi-client-codegen", specifier = ">=0.1.12" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "python-devkit", specifier = ">=0.1.0" },
