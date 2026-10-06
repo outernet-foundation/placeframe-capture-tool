@@ -148,10 +148,11 @@ wheels = [
 
 [[package]]
 name = "docker-devkit"
-version = "0.1.23"
+version = "0.2.1.dev37485576216"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
+    { name = "ci-devkit" },
     { name = "packaging" },
     { name = "pathspec" },
     { name = "pydantic" },
@@ -160,9 +161,9 @@ dependencies = [
     { name = "strictyaml" },
     { name = "typer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/43/9b/2ef1d51e58008770c18104623f4ea7994bd73652f632bb0828285e9ac200/docker_devkit-0.1.23.tar.gz", hash = "sha256:93e7e5066df032617ec18eb362cfd247dea5a4adc7021e7e8d67c97effaeb183", size = 62997, upload-time = "2026-09-30T04:23:09.38Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/77/a5/6331837ddc4e12d36db588da3151bcbd1534e4be44d2b734167bea246152/docker_devkit-0.2.1.dev37485576216.tar.gz", hash = "sha256:4588659b5de29a37580e7313e6924961ead7d5ce8a47a978573a492418a0eda3", size = 63491, upload-time = "2026-10-06T15:15:01.672Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/a1/4592db07d2c41384d5d567cb2e9c8c2e667628dfd3bdb3cff28ddcbad336/docker_devkit-0.1.23-py3-none-any.whl", hash = "sha256:4ef0fa8d416e5a45188ba0d7f7104c061cf8b8290180d96c10fef9b816698774", size = 27540, upload-time = "2026-09-30T04:23:08.032Z" },
+    { url = "https://files.pythonhosted.org/packages/01/cd/f62e9bcb9d4618f97e7f0915a8cfab96d0dbf057ec633593b7c26bbae18f/docker_devkit-0.2.1.dev37485576216-py3-none-any.whl", hash = "sha256:30b6b95ab7b0d238c1473f6530aa3e53ef74def4c80c1539f5912a5f5d0d7664", size = 28422, upload-time = "2026-10-06T15:15:00.679Z" },
 ]
 
 [[package]]
@@ -672,7 +673,7 @@ dev = [
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.39.10,<1.40" },
-    { name = "docker-devkit", specifier = ">=0.1.19" },
+    { name = "docker-devkit", specifier = "==0.2.1.dev37485576216" },
     { name = "openapi-client-codegen", specifier = ">=0.1.12" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "python-devkit", specifier = ">=0.1.0" },

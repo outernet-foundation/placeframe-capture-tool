@@ -12,7 +12,7 @@ dev = [
     "basedpyright>=1.39.10,<1.40",
     "ruff>=0.14.11,<0.15",
     "pytest>=8.0.0",
-    "docker-devkit>=0.1.19",
+    "docker-devkit==0.2.1.dev37485576216",
     "openapi-client-codegen>=0.1.12",
     "python-devkit>=0.1.0",
     "unity-devkit>=0.1.25",
