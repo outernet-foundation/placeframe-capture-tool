@@ -150,3 +150,17 @@ jobs:
           --targets aoa-gateway
           --builds-registry ghcr.io/outernet-foundation/placeframe-capture-tool/builds
           --run-number ${{ github.run_number }}
+  update-pr-draft-release:
+    if: github.event.pull_request
+    needs: [build-unity]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - *checkout
+      - *uv-restore
+      - *setup-release-devkit
+      - run: uv run --project "$RUNNER_TEMP/release-devkit" --locked --no-dev update-pr-draft-release --pr-number ${{ github.event.pull_request.number }} --run-number ${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
