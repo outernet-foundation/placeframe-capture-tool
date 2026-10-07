@@ -10,7 +10,6 @@ using Nessle;
 
 using ObserveThing;
 
-using static Nessle.UIBuilder;
 using DeviceType = PlaceframeApiClient.Model.DeviceType;
 using PlaceframeApiClient.Model;
 using Cysharp.Threading.Tasks;
@@ -19,6 +18,10 @@ using R3;
 using UnityEngine.Events;
 using Placeframe.Core.ARFoundation;
 
+using static Nessle.UIBuilder;
+using static Nessle.Props;
+using Unity.VisualScripting;
+
 namespace Placeframe.Client
 {
     public static partial class UIElements
@@ -26,7 +29,7 @@ namespace Placeframe.Client
         public static IControl AppUI() =>
             OrderedCanvas(new()
             {
-                children = Props.List(
+                children = List(
                     App.state.screen
                         .ObservableCreate(screen => screen switch
                         {
@@ -54,25 +57,25 @@ namespace Placeframe.Client
             return Control("Main UI", new()
             {
                 layout = Utility.FillParentProps(),
-                children = Props.List(
+                children = List(
                     TabbedMenu(new()
                     {
                         value = props.mode.ObservableSelect(x => (int)x),
-                        tabs = Props.List("Capture", "Validate"),
+                        tabs = List("Capture", "Validate"),
                         onValueChanged = x => props.onModeChanged?.Invoke((AppMode)x),
                         layout = new()
                         {
-                            anchorMin = Props.Value(new Vector2(0, 0)),
-                            anchorMax = Props.Value(new Vector2(1, 0)),
-                            anchoredPosition = Props.Value(new Vector2(0, 95f)),
-                            sizeDelta = Props.Value(new Vector2(-190, 95)),
-                            pivot = Props.Value(new Vector2(0.5f, 0))
+                            anchorMin = Value(new Vector2(0, 0)),
+                            anchorMax = Value(new Vector2(1, 0)),
+                            anchoredPosition = Value(new Vector2(0, 95f)),
+                            sizeDelta = Value(new Vector2(-190, 95)),
+                            pivot = Value(new Vector2(0.5f, 0))
                         }
                     }),
                     Control("Content", new()
                     {
                         layout = Utility.FillParentProps(),
-                        children = Props.List(props.mode.ObservableSelect(x =>
+                        children = List(props.mode.ObservableSelect(x =>
                         {
                             currentScreen?.Dispose();
 
@@ -126,16 +129,16 @@ namespace Placeframe.Client
             return Control("Capture UI", new()
             {
                 layout = Utility.FillParentProps(),
-                children = Props.List(
+                children = List(
                     Control("Zed Status Banner", new()
                     {
                         layout = new()
                         {
-                            pivot = Props.Value(new Vector2(0.5f, 0)),
-                            anchorMin = Props.Value(new Vector2(0.5f, 0)),
-                            anchorMax = Props.Value(new Vector2(0.5f, 0)),
-                            anchoredPosition = Props.Value(new Vector2(0, 430)),
-                            sizeDelta = Props.Value(new Vector2(785, 60))
+                            pivot = Value(new Vector2(0.5f, 0)),
+                            anchorMin = Value(new Vector2(0.5f, 0)),
+                            anchorMax = Value(new Vector2(0.5f, 0)),
+                            anchoredPosition = Value(new Vector2(0, 430)),
+                            sizeDelta = Value(new Vector2(785, 60))
                         },
                         element = new()
                         {
@@ -144,10 +147,10 @@ namespace Placeframe.Client
                                 zedStatusObservable,
                                 (mode, status) => mode == DeviceType.Zed && IsBannerState(status))
                         },
-                        children = Props.List(
+                        children = List(
                             Image(new()
                             {
-                                sprite = Props.Value(elements.roundedRect),
+                                sprite = Value(elements.roundedRect),
                                 style = { color = zedStatusObservable.ObservableSelect(ColorForBanner) },
                                 layout = Utility.FillParentProps()
                             }),
@@ -156,8 +159,8 @@ namespace Placeframe.Client
                                 value = zedStatusObservable.ObservableSelect(LabelForBanner),
                                 style =
                                 {
-                                    horizontalAlignment = Props.Value(TMPro.HorizontalAlignmentOptions.Center),
-                                    verticalAlignment = Props.Value(TMPro.VerticalAlignmentOptions.Capline)
+                                    horizontalAlignment = Value(TMPro.HorizontalAlignmentOptions.Center),
+                                    verticalAlignment = Value(TMPro.VerticalAlignmentOptions.Capline)
                                 },
                                 layout = Utility.FillParentProps()
                             })
@@ -167,24 +170,24 @@ namespace Placeframe.Client
                     {
                         layout = new()
                         {
-                            pivot = Props.Value(new Vector2(0.5f, 0)),
-                            anchorMin = Props.Value(new Vector2(0.5f, 0)),
-                            anchorMax = Props.Value(new Vector2(0.5f, 0)),
-                            anchoredPosition = Props.Value(new Vector2(0, 250)),
-                            sizeDelta = Props.Value(new Vector2(785, 170))
+                            pivot = Value(new Vector2(0.5f, 0)),
+                            anchorMin = Value(new Vector2(0.5f, 0)),
+                            anchorMax = Value(new Vector2(0.5f, 0)),
+                            anchoredPosition = Value(new Vector2(0, 250)),
+                            sizeDelta = Value(new Vector2(785, 170))
                         },
-                        children = Props.List(
+                        children = List(
                             LabeledButton(new LabeledButtonProps()
                             {
-                                label = Props.Value("Captures"),
+                                label = Value("Captures"),
                                 onClick = () => CapturesListUI(),
                                 layout = new()
                                 {
-                                    sizeDelta = Props.Value(new Vector2(255, 75)),
-                                    anchorMin = Props.Value(new Vector2(1, 0.5f)),
-                                    anchorMax = Props.Value(new Vector2(1, 0.5f)),
-                                    pivot = Props.Value(new Vector2(1, 0.5f)),
-                                    anchoredPosition = Props.Value(new Vector2(0, 0))
+                                    sizeDelta = Value(new Vector2(255, 75)),
+                                    anchorMin = Value(new Vector2(1, 0.5f)),
+                                    anchorMax = Value(new Vector2(1, 0.5f)),
+                                    pivot = Value(new Vector2(1, 0.5f)),
+                                    anchoredPosition = Value(new Vector2(0, 0))
                                 }
                             }),
                             LabeledButton(new LabeledButtonProps()
@@ -193,11 +196,11 @@ namespace Placeframe.Client
                                 onClick = () => App.state.captureMode.value = App.state.captureMode.value == DeviceType.ARFoundation ? DeviceType.Zed : DeviceType.ARFoundation,
                                 layout = new()
                                 {
-                                    sizeDelta = Props.Value(new Vector2(255, 75)),
-                                    anchorMin = Props.Value(new Vector2(0, 0.5f)),
-                                    anchorMax = Props.Value(new Vector2(0, 0.5f)),
-                                    pivot = Props.Value(new Vector2(0, 0.5f)),
-                                    anchoredPosition = Props.Value(new Vector2(0, 0))
+                                    sizeDelta = Value(new Vector2(255, 75)),
+                                    anchorMin = Value(new Vector2(0, 0.5f)),
+                                    anchorMax = Value(new Vector2(0, 0.5f)),
+                                    pivot = Value(new Vector2(0, 0.5f)),
+                                    anchoredPosition = Value(new Vector2(0, 0))
                                 }
                             }),
                             Toggle(prefab: elements.recordButton, props: new ToggleProps()
@@ -219,9 +222,9 @@ namespace Placeframe.Client
                                     }),
                                 layout = new()
                                 {
-                                    anchorMin = Props.Value(new Vector2(0.5f, 0.5f)),
-                                    anchorMax = Props.Value(new Vector2(0.5f, 0.5f)),
-                                    anchoredPosition = Props.Value(new Vector2(0, 0))
+                                    anchorMin = Value(new Vector2(0.5f, 0.5f)),
+                                    anchorMax = Value(new Vector2(0.5f, 0.5f)),
+                                    anchoredPosition = Value(new Vector2(0, 0))
                                 },
                                 onValueChanged = isOn =>
                                 {
@@ -257,34 +260,34 @@ namespace Placeframe.Client
         {
             return Dialog(new()
             {
-                useBackground = Props.Value(true),
-                backgroundColor = Props.Value(elements.backgroundColor),
-                contentConstructor = dialog => Props.Value(SafeArea(new()
+                useBackground = Value(true),
+                backgroundColor = Value(elements.backgroundColor),
+                contentConstructor = dialog => Value(SafeArea(new()
                 {
-                    children = Props.List(
+                    children = List(
                         TightRowsWideColumns(new()
                         {
-                            padding = Props.Value(new RectOffset(30, 30, 30, 30)),
+                            padding = Value(new RectOffset(30, 30, 30, 30)),
                             layout = Utility.FillParentProps(),
-                            children = Props.List(
+                            children = List(
                                 Image(new()
                                 {
-                                    style = { color = Props.Value(elements.backgroundColor) },
-                                    layout = Utility.FillParentProps(new() { ignoreLayout = Props.Value(true) })
+                                    style = { color = Value(elements.backgroundColor) },
+                                    layout = Utility.FillParentProps(new() { ignoreLayout = Value(true) })
                                 }),
-                                Title(new() { value = Props.Value("Captures") }),
+                                Title(new() { value = Value("Captures") }),
                                 ScrollRect(new()
                                 {
-                                    value = Props.Value(new Vector2(0, 1)),
-                                    vertical = Props.Value(true),
-                                    layout = new() { flexibleHeight = Props.Value(1f) },
-                                    content = Props.Value(
+                                    value = Value(new Vector2(0, 1)),
+                                    vertical = Value(true),
+                                    layout = new() { flexibleHeight = Value(1f) },
+                                    content = Value(
                                         TightRowsWideColumns(new()
                                         {
                                             layout = Utility.FillParentProps(new()
                                             {
-                                                fitContentVertical = Props.Value(ContentSizeFitter.FitMode.PreferredSize),
-                                                pivot = Props.Value(new Vector2(0, 1))
+                                                fitContentVertical = Value(ContentSizeFitter.FitMode.PreferredSize),
+                                                pivot = Value(new Vector2(0, 1))
                                             }),
                                             children = App.state.captures
                                                 .ObservableOrderBy(x => x.Value.recordedAt.ObservableSelect(t => -t.Ticks))
@@ -294,14 +297,97 @@ namespace Placeframe.Client
                                 }),
                                 Row(new()
                                 {
-                                    childAlignment = Props.Value(TextAnchor.MiddleRight),
-                                    children = Props.List(
+                                    childAlignment = Value(TextAnchor.MiddleRight),
+                                    children = List(
                                         LabeledButton(new()
                                         {
-                                            label = Props.Value("Done"),
+                                            label = Value("Done"),
                                             onClick = dialog.Dispose
                                         })
                                     )
+                                })
+                            )
+                        }),
+                        RoundIconButton(new RoundIconButtonProps()
+                        {
+                            layout = new()
+                            {
+                                anchorMax = Value(new Vector2(0, 1)),
+                                anchorMin = Value(new Vector2(0, 1)),
+                                pivot = Value(new Vector2(0, 1)),
+                                localPosition = Value(new Vector3(29f, -29f)),
+                                fitContentHorizontal = Value(ContentSizeFitter.FitMode.PreferredSize),
+                                fitContentVertical = Value(ContentSizeFitter.FitMode.PreferredSize)
+                            },
+                            icon = new ImageProps()
+                            {
+                                sprite = Value(elements.moreMenuSprite),
+                                style = { preserveAspect = Value(true) }
+                            },
+                            onClick = () => OptionsDialog()
+                        })
+                    )
+                }))
+            });
+        }
+
+        private static IDisposable OptionsDialog()
+        {
+            return Dialog(new()
+            {
+                useBackground = Value(true),
+                backgroundColor = Value(elements.backgroundColor),
+                contentConstructor = dialog => Value(SafeArea(new()
+                {
+                    children = List(
+                        VerticalLayout(new()
+                        {
+                            layout = Utility.FillParentProps(),
+                            childControlHeight = Value(true),
+                            childControlWidth = Value(true),
+                            childForceExpandWidth = Value(true),
+                            padding = Value(new RectOffset(30, 30, 30, 30)),
+                            spacing = Value(30f),
+                            children = List(
+                                Title(new() { value = Value("Settings ") }),
+                                ScrollRect(new()
+                                {
+                                    value = Value(new Vector2(0, 1)),
+                                    vertical = Value(true),
+                                    layout = new() { flexibleHeight = Value(1f) },
+                                    content = Value(
+                                        TightRowsWideColumns(new()
+                                        {
+                                            layout = Utility.FillParentProps(new()
+                                            {
+                                                fitContentVertical = Value(ContentSizeFitter.FitMode.PreferredSize),
+                                                pivot = Value(new Vector2(0, 1))
+                                            }),
+                                            children = List(
+                                                ObjectInspector(new()
+                                                {
+                                                    isReadonly = Value(false),
+                                                    target = App.state.settings.reconstructionOptions.value,
+                                                    foldout = new() { label = new() { value = Value("Reconstruction Options") } },
+                                                })
+                                            )
+                                        })
+                                    )
+                                }),
+                                HorizontalLayout(new()
+                                {
+                                    childControlWidth = Value(true),
+                                    childControlHeight = Value(true),
+                                    childAlignment = Value(TextAnchor.MiddleRight),
+                                    children = List(LabeledButton(new()
+                                    {
+                                        label = Value("Done"),
+                                        onClick = () =>
+                                        {
+                                            SettingsManager.SaveSettings();
+                                            dialog.Dispose();
+                                        }
+                                    }))
                                 })
                             )
                         })
@@ -335,27 +421,27 @@ namespace Placeframe.Client
 
             var control = VerticalLayout(new()
             {
-                childControlWidth = Props.Value(true),
-                childControlHeight = Props.Value(true),
-                padding = Props.Value(new RectOffset(30, 30, 30, 30)),
-                spacing = Props.Value(10f),
+                childControlWidth = Value(true),
+                childControlHeight = Value(true),
+                padding = Value(new RectOffset(30, 30, 30, 30)),
+                spacing = Value(10f),
                 element = props.element,
                 layout = props.layout,
-                children = Props.List(
+                children = List(
                     Title(new()
                     {
-                        value = Props.Value("Metrics"),
-                        style = new() { outlineWidth = Props.Value(.15f) }
+                        value = Value("Metrics"),
+                        style = new() { outlineWidth = Value(.15f) }
                     }),
                     Text(new()
                     {
-                        value = Props.Value("LOCALIZATION LOST — Stop and Start to recover."),
+                        value = Value("LOCALIZATION LOST — Stop and Start to recover."),
                         element = new() { active = lostObservable },
                         style = new()
                         {
-                            color = Props.Value(Color.red),
-                            outlineWidth = Props.Value(.15f),
-                            horizontalAlignment = Props.Value(TMPro.HorizontalAlignmentOptions.Center)
+                            color = Value(Color.red),
+                            outlineWidth = Value(.15f),
+                            horizontalAlignment = Value(TMPro.HorizontalAlignmentOptions.Center)
                         }
                     }),
                     Text(new() { value = lastAcceptObservable }),
@@ -381,20 +467,20 @@ namespace Placeframe.Client
         {
             return HorizontalLayout(new()
             {
-                childControlWidth = Props.Value(true),
-                childControlHeight = Props.Value(true),
-                childAlignment = Props.Value(TextAnchor.MiddleLeft),
-                spacing = Props.Value(10f),
-                children = Props.List(
+                childControlWidth = Value(true),
+                childControlHeight = Value(true),
+                childAlignment = Value(TextAnchor.MiddleLeft),
+                spacing = Value(10f),
+                children = List(
                     Text(new()
                     {
-                        value = Props.Value(label),
-                        layout = new() { flexibleWidth = Props.Value(1f) },
+                        value = Value(label),
+                        layout = new() { flexibleWidth = Value(1f) },
                         style = new()
                         {
-                            verticalAlignment = Props.Value(TMPro.VerticalAlignmentOptions.Capline),
-                            overflowMode = Props.Value(TMPro.TextOverflowModes.Ellipsis),
-                            textWrappingMode = Props.Value(TMPro.TextWrappingModes.NoWrap)
+                            verticalAlignment = Value(TMPro.VerticalAlignmentOptions.Capline),
+                            overflowMode = Value(TMPro.TextOverflowModes.Ellipsis),
+                            textWrappingMode = Value(TMPro.TextWrappingModes.NoWrap)
                         }
                     }),
                     Toggle(new ToggleProps()
@@ -422,30 +508,30 @@ namespace Placeframe.Client
             var control = Control("Validation UI", new()
             {
                 layout = Utility.FillParentProps(),
-                children = Props.List(
+                children = List(
                     LocalizationMetricsDialog(new()
                     {
                         element = new() { active = metricsDialogOpen },
                         layout = Utility.FillParentProps(new()
                         {
-                            offsetMin = Props.Value(new Vector2(95, 480)),
-                            offsetMax = Props.Value(new Vector2(-95, -95))
+                            offsetMin = Value(new Vector2(95, 480)),
+                            offsetMax = Value(new Vector2(-95, -95))
                         })
                     }),
                     Control("Bottom Bar", new()
                     {
                         layout = new()
                         {
-                            pivot = Props.Value(new Vector2(0.5f, 0)),
-                            anchorMin = Props.Value(new Vector2(0.5f, 0)),
-                            anchorMax = Props.Value(new Vector2(0.5f, 0)),
-                            anchoredPosition = Props.Value(new Vector2(0, 250)),
-                            sizeDelta = Props.Value(new Vector2(785, 170))
+                            pivot = Value(new Vector2(0.5f, 0)),
+                            anchorMin = Value(new Vector2(0.5f, 0)),
+                            anchorMax = Value(new Vector2(0.5f, 0)),
+                            anchoredPosition = Value(new Vector2(0, 250)),
+                            sizeDelta = Value(new Vector2(785, 170))
                         },
-                        children = Props.List(
+                        children = List(
                             LabeledButton(new LabeledButtonProps()
                             {
-                                label = Props.Value("Metrics"),
+                                label = Value("Metrics"),
                                 labelStyle = new TextStyleProps()
                                 {
                                     color = lockupHealth.ObservableSelect(h => h.LocalizationLost ? Color.red : Color.white)
@@ -453,11 +539,11 @@ namespace Placeframe.Client
                                 onClick = () => metricsDialogOpen.value = !metricsDialogOpen.value,
                                 layout = new()
                                 {
-                                    sizeDelta = Props.Value(new Vector2(255, 75)),
-                                    pivot = Props.Value(new Vector2(1, 0.5f)),
-                                    anchorMin = Props.Value(new Vector2(1, 0.5f)),
-                                    anchorMax = Props.Value(new Vector2(1, 0.5f)),
-                                    anchoredPosition = Props.Value(new Vector2(0, 0))
+                                    sizeDelta = Value(new Vector2(255, 75)),
+                                    pivot = Value(new Vector2(1, 0.5f)),
+                                    anchorMin = Value(new Vector2(1, 0.5f)),
+                                    anchorMax = Value(new Vector2(1, 0.5f)),
+                                    anchoredPosition = Value(new Vector2(0, 0))
                                 }
                             }),
                             LabeledButton(new LabeledButtonProps()
@@ -465,7 +551,7 @@ namespace Placeframe.Client
                                 label = App.state.mapForLocalization.ObservableSelect(x =>
                                 {
                                     if (x == Guid.Empty)
-                                        return Props.Value("Maps");
+                                        return Value("Maps");
 
                                     return App.state.captures
                                         .ObservableSelect(x => x.Value)
@@ -474,12 +560,12 @@ namespace Placeframe.Client
                                             x.localizationMapId,
                                             (targetCapture, capture) => targetCapture == capture
                                         ))
-                                        .ObservableSelect(x => x?.name.ObservableSelect(n => n ?? $"Unnamed [{x.id}]") ?? Props.Value("Maps"));
+                                        .ObservableSelect(x => x?.name.ObservableSelect(n => n ?? $"Unnamed [{x.id}]") ?? Value("Maps"));
                                 }),
                                 labelStyle = new TextStyleProps()
                                 {
-                                    textWrappingMode = Props.Value(TMPro.TextWrappingModes.NoWrap),
-                                    overflowMode = Props.Value(TMPro.TextOverflowModes.Ellipsis)
+                                    textWrappingMode = Value(TMPro.TextWrappingModes.NoWrap),
+                                    overflowMode = Value(TMPro.TextOverflowModes.Ellipsis)
                                 },
                                 onClick = () => selectValidationTargetDialog = SelectValidationTargetDialog(new()
                                 {
@@ -492,11 +578,11 @@ namespace Placeframe.Client
                                 }),
                                 layout = new()
                                 {
-                                    sizeDelta = Props.Value(new Vector2(255, 75)),
-                                    pivot = Props.Value(new Vector2(0, 0.5f)),
-                                    anchorMin = Props.Value(new Vector2(0, 0.5f)),
-                                    anchorMax = Props.Value(new Vector2(0, 0.5f)),
-                                    anchoredPosition = Props.Value(new Vector2(0, 0))
+                                    sizeDelta = Value(new Vector2(255, 75)),
+                                    pivot = Value(new Vector2(0, 0.5f)),
+                                    anchorMin = Value(new Vector2(0, 0.5f)),
+                                    anchorMax = Value(new Vector2(0, 0.5f)),
+                                    anchoredPosition = Value(new Vector2(0, 0))
                                 }
                             }),
                             Toggle(prefab: elements.playButton, props: new ToggleProps()
@@ -506,9 +592,9 @@ namespace Placeframe.Client
                                 onValueChanged = x => App.state.localizing.value = x,
                                 layout = new()
                                 {
-                                    anchorMin = Props.Value(new Vector2(0.5f, 0.5f)),
-                                    anchorMax = Props.Value(new Vector2(0.5f, 0.5f)),
-                                    anchoredPosition = Props.Value(new Vector2(0, 0))
+                                    anchorMin = Value(new Vector2(0.5f, 0.5f)),
+                                    anchorMax = Value(new Vector2(0.5f, 0.5f)),
+                                    anchoredPosition = Value(new Vector2(0, 0))
                                 }
                             })
                         )
@@ -535,35 +621,35 @@ namespace Placeframe.Client
             var input = new ObservableValue<string>("");
             return Dialog(new()
             {
-                useBackground = Props.Value(true),
-                backgroundColor = Props.Value(elements.backgroundColor),
-                contentConstructor = dialog => Props.Value(SafeArea(new()
+                useBackground = Value(true),
+                backgroundColor = Value(elements.backgroundColor),
+                contentConstructor = dialog => Value(SafeArea(new()
                 {
-                    children = Props.List(
+                    children = List(
                         VerticalLayout(new()
                         {
-                            childControlWidth = Props.Value(true),
-                            childControlHeight = Props.Value(true),
-                            childForceExpandWidth = Props.Value(true),
-                            spacing = Props.Value(30f),
-                            padding = Props.Value(new RectOffset(30, 30, 30, 30)),
+                            childControlWidth = Value(true),
+                            childControlHeight = Value(true),
+                            childForceExpandWidth = Value(true),
+                            spacing = Value(30f),
+                            padding = Value(new RectOffset(30, 30, 30, 30)),
                             layout = Utility.FillParentProps(),
-                            children = Props.List(
-                                Title(new() { value = Props.Value("Name this capture") }),
+                            children = List(
+                                Title(new() { value = Value("Name this capture") }),
                                 InputField(new InputFieldProps()
                                 {
-                                    layout = new() { flexibleWidth = Props.Value(1f) },
+                                    layout = new() { flexibleWidth = Value(1f) },
                                     value = input,
-                                    placeholderValue = Props.Value("e.g. west stairwell"),
+                                    placeholderValue = Value("e.g. west stairwell"),
                                     onValueChanged = x => input.value = x
                                 }),
                                 Row(new()
                                 {
-                                    childAlignment = Props.Value(TextAnchor.MiddleRight),
-                                    children = Props.List(
+                                    childAlignment = Value(TextAnchor.MiddleRight),
+                                    children = List(
                                         LabeledButton(new LabeledButtonProps()
                                         {
-                                            label = Props.Value("OK"),
+                                            label = Value("OK"),
                                             interactable = input.ObservableSelect(n => !string.IsNullOrWhiteSpace(n)),
                                             onClick = () => props.onSubmit?.Invoke(input.value.Trim())
                                         })
@@ -580,34 +666,34 @@ namespace Placeframe.Client
         {
             return Dialog(new()
             {
-                useBackground = Props.Value(true),
-                backgroundColor = Props.Value(elements.backgroundColor),
-                contentConstructor = dialog => Props.Value(SafeArea(new()
+                useBackground = Value(true),
+                backgroundColor = Value(elements.backgroundColor),
+                contentConstructor = dialog => Value(SafeArea(new()
                 {
-                    children = Props.List(
+                    children = List(
                         TightRowsWideColumns(new()
                         {
-                            padding = Props.Value(new RectOffset(30, 30, 30, 30)),
+                            padding = Value(new RectOffset(30, 30, 30, 30)),
                             layout = Utility.FillParentProps(),
-                            children = Props.List(
-                                Title(new() { value = Props.Value("Localization Maps") }),
+                            children = List(
+                                Title(new() { value = Value("Localization Maps") }),
                                 ScrollRect(new()
                                 {
-                                    value = Props.Value(new Vector2(0, 1)),
-                                    horizontal = Props.Value(false),
-                                    layout = new() { flexibleHeight = Props.Value(1f) },
-                                    content = Props.Value(
+                                    value = Value(new Vector2(0, 1)),
+                                    horizontal = Value(false),
+                                    layout = new() { flexibleHeight = Value(1f) },
+                                    content = Value(
                                         TightRowsWideColumns(new()
                                         {
-                                            padding = Props.Value(new RectOffset(30, 30, 30, 30)),
+                                            padding = Value(new RectOffset(30, 30, 30, 30)),
                                             layout = Utility.FillParentProps(new()
                                             {
-                                                pivot = Props.Value(new Vector2(0, 1)),
-                                                anchorMin = Props.Value(new Vector2(0, 1)),
-                                                anchorMax = Props.Value(new Vector2(1, 1)),
-                                                offsetMin = Props.Value(new Vector2(0, 0)),
-                                                offsetMax = Props.Value(new Vector2(0, 0)),
-                                                fitContentVertical = Props.Value(ContentSizeFitter.FitMode.PreferredSize)
+                                                pivot = Value(new Vector2(0, 1)),
+                                                anchorMin = Value(new Vector2(0, 1)),
+                                                anchorMax = Value(new Vector2(1, 1)),
+                                                offsetMin = Value(new Vector2(0, 0)),
+                                                offsetMax = Value(new Vector2(0, 0)),
+                                                fitContentVertical = Value(ContentSizeFitter.FitMode.PreferredSize)
                                             }),
                                             children = App.state.captures
                                                 .ObservableWhere(x => x.Value.localizationMapId.ObservableSelect(x => x != Guid.Empty))
@@ -622,11 +708,11 @@ namespace Placeframe.Client
                                 }),
                                 Row(new()
                                 {
-                                    childAlignment = Props.Value(TextAnchor.MiddleRight),
-                                    children = Props.List(
+                                    childAlignment = Value(TextAnchor.MiddleRight),
+                                    children = List(
                                         LabeledButton(new LabeledButtonProps()
                                         {
-                                            label = Props.Value("Done"),
+                                            label = Value("Done"),
                                             onClick = dialog.Dispose
                                         })
                                     )
@@ -642,95 +728,95 @@ namespace Placeframe.Client
         {
             return Dialog(new()
             {
-                useBackground = Props.Value(true),
-                backgroundColor = Props.Value(elements.backgroundColor),
-                contentConstructor = dialog => Props.Value(SafeArea(new()
+                useBackground = Value(true),
+                backgroundColor = Value(elements.backgroundColor),
+                contentConstructor = dialog => Value(SafeArea(new()
                 {
-                    children = Props.List(
+                    children = List(
                         VerticalLayout(new()
                         {
-                            childControlWidth = Props.Value(true),
-                            childControlHeight = Props.Value(true),
-                            childForceExpandWidth = Props.Value(true),
-                            spacing = Props.Value(30f),
-                            padding = Props.Value(new RectOffset(30, 30, 30, 30)),
+                            childControlWidth = Value(true),
+                            childControlHeight = Value(true),
+                            childForceExpandWidth = Value(true),
+                            spacing = Value(30f),
+                            padding = Value(new RectOffset(30, 30, 30, 30)),
                             layout = Utility.FillParentProps(),
-                            children = Props.List(
-                                Title(new TextProps() { value = Props.Value("Capture Data") }),
+                            children = List(
+                                Title(new TextProps() { value = Value("Capture Data") }),
                                 ScrollRect(new ScrollRectProps()
                                 {
-                                    vertical = Props.Value(true),
-                                    layout = new() { flexibleHeight = Props.Value(1f) },
-                                    content = Props.Value(
+                                    vertical = Value(true),
+                                    layout = new() { flexibleHeight = Value(1f) },
+                                    content = Value(
                                         VerticalLayout(new()
                                         {
-                                            childControlWidth = Props.Value(true),
-                                            childControlHeight = Props.Value(true),
-                                            spacing = Props.Value(10f),
-                                            padding = Props.Value(new RectOffset(30, 30, 30, 30)),
+                                            childControlWidth = Value(true),
+                                            childControlHeight = Value(true),
+                                            spacing = Value(10f),
+                                            padding = Value(new RectOffset(30, 30, 30, 30)),
                                             layout = new()
                                             {
-                                                pivot = Props.Value(new Vector2(0, 1)),
-                                                anchorMin = Props.Value(new Vector2(0, 1)),
-                                                anchorMax = Props.Value(new Vector2(1, 1)),
-                                                offsetMin = Props.Value(new Vector2(0, 0)),
-                                                offsetMax = Props.Value(new Vector2(0, 0)),
-                                                fitContentVertical = Props.Value(ContentSizeFitter.FitMode.PreferredSize)
+                                                pivot = Value(new Vector2(0, 1)),
+                                                anchorMin = Value(new Vector2(0, 1)),
+                                                anchorMax = Value(new Vector2(1, 1)),
+                                                offsetMin = Value(new Vector2(0, 0)),
+                                                offsetMax = Value(new Vector2(0, 0)),
+                                                fitContentVertical = Value(ContentSizeFitter.FitMode.PreferredSize)
                                             },
-                                            children = Props.List(
+                                            children = List(
                                                 LabeledControl(new LabeledControlProps()
                                                 {
-                                                    label = Props.Value("Name"),
+                                                    label = Value("Name"),
                                                     control = InputField(new InputFieldProps()
                                                     {
-                                                        layout = new() { flexibleWidth = Props.Value(1f) },
+                                                        layout = new() { flexibleWidth = Value(1f) },
                                                         value = capture.name,
-                                                        placeholderValue = Props.Value(capture.id.ToString()),
+                                                        placeholderValue = Value(capture.id.ToString()),
                                                         onEndEdit = x => capture.name.value = x
                                                     })
                                                 }),
                                                 LabeledControl(new LabeledControlProps()
                                                 {
-                                                    label = Props.Value("Source"),
-                                                    labelWidth = Props.Value(240f),
+                                                    label = Value("Source"),
+                                                    labelWidth = Value(240f),
                                                     control = Text(new TextProps()
                                                     {
-                                                        layout = new() { flexibleWidth = Props.Value(1f) },
+                                                        layout = new() { flexibleWidth = Value(1f) },
                                                         value = capture.type.ObservableSelect(x => x == DeviceType.ARFoundation ? "Mobile" : "Zed"),
                                                         style = new TextStyleProps()
                                                         {
-                                                            verticalAlignment = Props.Value(TMPro.VerticalAlignmentOptions.Capline),
-                                                            horizontalAlignment = Props.Value(TMPro.HorizontalAlignmentOptions.Right)
+                                                            verticalAlignment = Value(TMPro.VerticalAlignmentOptions.Capline),
+                                                            horizontalAlignment = Value(TMPro.HorizontalAlignmentOptions.Right)
                                                         }
                                                     })
                                                 }),
                                                 LabeledControl(new LabeledControlProps()
                                                 {
-                                                    label = Props.Value("Recorded At"),
-                                                    labelWidth = Props.Value(240f),
+                                                    label = Value("Recorded At"),
+                                                    labelWidth = Value(240f),
                                                     control = Text(new TextProps()
                                                     {
-                                                        layout = new() { flexibleWidth = Props.Value(1f) },
+                                                        layout = new() { flexibleWidth = Value(1f) },
                                                         value = capture.recordedAt.ObservableSelect(x => x.ToString()),
                                                         style = new TextStyleProps()
                                                         {
-                                                            verticalAlignment = Props.Value(TMPro.VerticalAlignmentOptions.Capline),
-                                                            horizontalAlignment = Props.Value(TMPro.HorizontalAlignmentOptions.Right)
+                                                            verticalAlignment = Value(TMPro.VerticalAlignmentOptions.Capline),
+                                                            horizontalAlignment = Value(TMPro.HorizontalAlignmentOptions.Right)
                                                         }
                                                     })
                                                 }),
                                                 Columns(new()
                                                 {
-                                                    spacing = Props.Value(30f),
+                                                    spacing = Value(30f),
                                                     layout = new()
                                                     {
-                                                        flexibleWidth = Props.Value(1f),
-                                                        minHeight = Props.Value(75f),
+                                                        flexibleWidth = Value(1f),
+                                                        minHeight = Value(75f),
                                                     },
-                                                    columns = Props.List(
+                                                    columns = List(
                                                         LabeledButton(new LabeledButtonProps()
                                                         {
-                                                            label = Props.Value("Clear Local Files "),
+                                                            label = Value("Clear Local Files "),
                                                             interactable = Observables.ObservableCombineValues(
                                                                 capture.status,
                                                                 capture.hasLocalFiles,
@@ -779,22 +865,22 @@ namespace Placeframe.Client
                                                     target = ManifestHelpers.ExtractOptions(capture.reconstruction.value),
                                                     foldout = new FoldoutProps()
                                                     {
-                                                        label = new TextProps() { value = Props.Value("Reconstruction Options") },
-                                                        isOpen = Props.Value(false),
+                                                        label = new TextProps() { value = Value("Reconstruction Options") },
+                                                        isOpen = Value(false),
                                                         interactable = capture.reconstruction.ObservableSelect(x => x != null)
                                                     },
-                                                    isReadonly = Props.Value(true)
+                                                    isReadonly = Value(true)
                                                 }),
                                                 ObjectInspector(new ObjectInspectorProps()
                                                 {
                                                     target = ManifestHelpers.ExtractMetrics(capture.reconstruction.value),
                                                     foldout = new FoldoutProps()
                                                     {
-                                                        label = new TextProps() { value = Props.Value("Reconstruction Metrics") },
-                                                        isOpen = Props.Value(false),
+                                                        label = new TextProps() { value = Value("Reconstruction Metrics") },
+                                                        isOpen = Value(false),
                                                         interactable = capture.reconstruction.ObservableSelect(x => x != null)
                                                     },
-                                                    isReadonly = Props.Value(true)
+                                                    isReadonly = Value(true)
                                                 })
                                             )
                                         })
@@ -802,14 +888,14 @@ namespace Placeframe.Client
                                 }),
                                 HorizontalLayout(new()
                                 {
-                                    childControlWidth = Props.Value(true),
-                                    childControlHeight = Props.Value(true),
-                                    spacing = Props.Value(10f),
-                                    childAlignment = Props.Value(TextAnchor.MiddleRight),
-                                    children = Props.List(
+                                    childControlWidth = Value(true),
+                                    childControlHeight = Value(true),
+                                    spacing = Value(10f),
+                                    childAlignment = Value(TextAnchor.MiddleRight),
+                                    children = List(
                                         LabeledButton(new LabeledButtonProps()
                                         {
-                                            label = Props.Value("Done"),
+                                            label = Value("Done"),
                                             onClick = dialog.Dispose
                                         })
                                     )

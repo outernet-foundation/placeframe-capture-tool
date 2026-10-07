@@ -159,7 +159,7 @@ namespace Placeframe.Client
 
                 capture.serverCaptureExists.value = true;
 
-                var reconstruction = await CreateReconstruction(captureSession.Id);
+                var reconstruction = await CreateReconstruction(captureSession.Id, App.state.settings.reconstructionOptions.value);
                 capture.reconstruction.value = reconstruction;
                 capture.clientPhase.value = CaptureClientPhase.Idle;
                 capture.clientProgress.value = null;
@@ -184,7 +184,7 @@ namespace Placeframe.Client
         {
             try
             {
-                var reconstruction = await CreateReconstruction(capture.id);
+                var reconstruction = await CreateReconstruction(capture.id, App.state.settings.reconstructionOptions.value);
                 capture.reconstruction.value = reconstruction;
                 capture.clientPhase.value = CaptureClientPhase.Idle;
             }
@@ -230,9 +230,9 @@ namespace Placeframe.Client
             }
         }
 
-        private static UniTask<ReconstructionReadWithQueue> CreateReconstruction(Guid captureId) =>
+        private static UniTask<ReconstructionReadWithQueue> CreateReconstruction(Guid captureId, ReconstructionOptions options = default) =>
             VisualPositioningSystem.Api
-                .CreateReconstructionAsync(new ReconstructionCreateWithOptions(new ReconstructionCreate { CaptureSessionId = captureId }))
+                .CreateReconstructionAsync(new ReconstructionCreateWithOptions(new ReconstructionCreate { CaptureSessionId = captureId }) { Options = options })
                 .AsUniTask();
 
         private static string ReconstructingPhaseLabel(ReconstructionReadWithQueue reconstruction)

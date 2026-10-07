@@ -29,6 +29,7 @@ namespace Placeframe.Client
 
         protected override void Awake()
         {
+            Log<LogGroup>.enabledLogGroups = ~LogGroup.Rest;
             Logger<LogGroup>.Initialize(labels: new[]
             {
                 ("app", "capture-tool"),
@@ -72,6 +73,8 @@ namespace Placeframe.Client
             SettingsManager.Shutdown();
             AuthManager.Shutdown();
             ui?.Dispose();
+
+            Logger<LogGroup>.Terminate();
         }
     }
 }

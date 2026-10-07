@@ -6,6 +6,8 @@ namespace Placeframe.Client
 {
     public struct FoldoutProps
     {
+        public ElementProps element;
+        public LayoutProps layout;
         public TextProps label;
         public IValueObservable<bool> interactable;
         public IValueObservable<bool> isOpen;
@@ -33,6 +35,14 @@ namespace Placeframe.Client
                     props.isOpenChanged?.Invoke(x);
                 }
             });
+
+            AddBinding(
+                label,
+                layout,
+                toggle,
+                props.element.Subscribe(this),
+                props.layout.Subscribe(this)
+            );
         }
     }
 }

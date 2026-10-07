@@ -63,6 +63,8 @@ namespace Placeframe.Client
         public StateValue<string> apiUrl { get; private set; }
         public StateValue<string> username { get; private set; }
         public StateValue<string> password { get; private set; }
+        public StateValue<ReconstructionOptions> reconstructionOptions { get; private set; } =
+            new StateValue<ReconstructionOptions>(() => new ReconstructionOptions());
     }
 
     public class AppState : StateObject

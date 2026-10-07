@@ -192,6 +192,8 @@ namespace Placeframe.Client
 
         public struct RoundIconButtonProps
         {
+            public ElementProps element;
+            public LayoutProps layout;
             public ImageProps icon;
             public UnityAction onClick;
             public IValueObservable<bool> interactable;
@@ -202,6 +204,8 @@ namespace Placeframe.Client
         {
             return RoundButton(new ButtonProps()
             {
+                element = props.element,
+                layout = props.layout,
                 background = props.background,
                 interactable = props.interactable,
                 onClick = props.onClick,
