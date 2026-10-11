@@ -7,15 +7,15 @@ dependencies = []
 [dependency-groups]
 dev = [
     "scripts",
-    # Bounded to placeframe's locked linter versions: the moved zed tree is
-    # lint/type-clean against them, newer majors add rules it fails.
+    # The zed tree is lint/type-clean against these linter lines; newer majors add rules it fails
     "basedpyright>=1.39.10,<1.40",
     "ruff>=0.14.11,<0.15",
     "pytest>=8.0.0",
-    "docker-devkit>=0.1.19",
-    "openapi-client-codegen>=0.1.12",
-    "python-devkit>=0.1.0",
-    "unity-devkit>=0.1.25",
+    "bashrun>=0.8",
+    "docker-devkit>=0.4",
+    "openapi-client-codegen>=0.3",
+    "python-devkit>=0.3",
+    "unity-devkit>=0.3",
 ]
 
 [tool.uv.workspace]
