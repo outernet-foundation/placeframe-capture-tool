@@ -10,10 +10,9 @@ requires-python = ">=3.13, <3.14"
 # wheel matching the installed SDK version. It is installed at Docker build time inside
 # the Stereolabs base image — see zed/Dockerfile.
 dependencies = [
-    # Exact pins: only dev versions exist on PyPI; 0.1.0.dev35815669170 is the
-    # first build whose placeframe-common wheel carries the logger-conf rename.
-    "placeframe-common==0.1.0.dev37392360334",
-    "placeframe-core==0.1.0.dev37392360334",
+    # Exact pins, both at the same placeframe run id: the 2.0 dev line.
+    "placeframe-common==2.0.0.dev1324",
+    "placeframe-core==2.0.0.dev1324",
     "scipy>=1.16.1",
     "uvicorn>=0.35.0",
     "litestar>=2.19.0",
