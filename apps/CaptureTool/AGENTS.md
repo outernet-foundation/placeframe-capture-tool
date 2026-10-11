@@ -8,20 +8,20 @@ Capture rows POST reconstructions with no `ReconstructionOptions` payload. The r
 
 ## Invoking Unity from a Pulsar slot
 
-Use `uvx --from unity-devkit compile-unity` for every Unity invocation; never call `/opt/unity/.../Unity` directly.
+Use `uv run --locked build-unity` (or `uvx --from unity-devkit build-unity`) for every Unity invocation; never call `/opt/unity/.../Unity` directly.
 
-**Build + install on the host-attached phone:**
+**Build (and install) on the host-attached phone:**
 
 ```
-uvx --from unity-devkit compile-unity --project CaptureTool --build android-mobile
-adb install -r apps/CaptureTool/Build/<ProductName>.apk   # path is printed at end of build
+uv run --locked build-unity --project CaptureTool --platform AndroidMobile
+adb install -r apps/CaptureTool/Build/Capture_Tool.apk   # path is printed at end of build
 ```
 
-Both `--project` and `--build` are required (no defaults). `--project` is the `name` field of the project's `unity-devkit.json`; `--build` keys are its `platforms` keys. The command preps NuGet/dotnet tools, builds Unity in batchmode via the entry's registered `executeMethod`, streams the log, and prints the produced APK path on success. Use the same command for a "did this `.cs` change compile?" sanity check — Unity bails fast on `error CS####` before the Android build starts.
+Both `--project` and `--platform` are required. `--project` is the `name` field of the project's `unity-devkit.json`; `--platform` is a key of its `platforms` map. Absent `--registry` the verb is the local build: it preps NuGet/dotnet tools, builds Unity in batchmode via the playerbuild entry, streams the log, and prints the produced APK path on success. Use the same command for a "did this `.cs` change compile?" sanity check — Unity bails fast on `error CS####` before the Android build starts.
 
-The CI-side `uvx --from unity-devkit build-unity` is a different entry point (cache, license, OCI registry, version tags) and is not usable from a slot. Don't reach for it.
+The CI shape is the same verb plus `--registry` (license/UPM/library caches, version stamping, build-output shelving) — not usable from a slot.
 
-`compile-unity` goes through `unity_batchmode_command`, which prefixes `env -u ADB_SERVER_SOCKET` on non-Windows. Background: Unity's Android build module runs `adb kill-server` on teardown. Since every slot has `ADB_SERVER_SOCKET` forwarded to the host adb daemon (set unconditionally by `uv run agent-shell`), an unscrubbed kill propagates through the socket and terminates the *host-side* server — next `adb` call from the slot then fails with `Connection refused` until the host runs `adb -a -P 5037 start-server` again. The `env -u` strip in `unity_batchmode_command` confines Unity's adb dance to a local daemon inside the slot. Direct `/opt/unity/.../Unity` invocations bypass that guard, which is why the rule is "always `uvx --from unity-devkit compile-unity`."
+`build-unity` goes through `unity_batchmode_command`, which prefixes `env -u ADB_SERVER_SOCKET` on non-Windows. Background: Unity's Android build module runs `adb kill-server` on teardown. Since every slot has `ADB_SERVER_SOCKET` forwarded to the host adb daemon (set unconditionally by `uv run agent-shell`), an unscrubbed kill propagates through the socket and terminates the *host-side* server — next `adb` call from the slot then fails with `Connection refused` until the host runs `adb -a -P 5037 start-server` again. The `env -u` strip in `unity_batchmode_command` confines Unity's adb dance to a local daemon inside the slot. Direct `/opt/unity/.../Unity` invocations bypass that guard, which is why the rule is "always `build-unity`."
 
 ## USB port contention when testing against the ZED box
 
@@ -37,7 +37,7 @@ The Pixel has one USB-C port. In end-to-end testing the ZED cable occupies it, w
 
 After every fresh install of the Capture Tool, the grant has to be re-applied — it persists across reboots and app launches but is lost on uninstall. The install tool no longer grants it (device-state setup ruled out of the installer's scope): apply it by hand after installing —
 
-`uvx --from unity-devkit install --build --project CaptureTool` builds, installs, and applies the grant in one step (same `grant_permissions` path as above) — prefer it for local deploys. Only when you've hand-built with `uvx --from unity-devkit compile-unity` + `adb install` does the grant have to be applied manually:
+`uvx --from unity-devkit install --build --project CaptureTool` builds, installs, and applies the grant in one step (same `grant_permissions` path as above) — prefer it for local deploys. Only when you've hand-built with `build-unity` + `adb install` does the grant have to be applied manually:
 
 ```
 adb shell pm grant com.outernet.captureapp android.permission.READ_LOGS
@@ -61,7 +61,7 @@ Prefer the structured `| json | <field>="<value>"` form over `|= "<substring>"` 
 
 ## NuGet packages (`Assets/packages.config`)
 
-NuGetForUnity's CLI (`dotnet nugetforunity restore`, what CI and `compile-unity` run) only downloads packages already listed — it does **not** resolve transitive dependencies; resolution happens only in the editor UI. The current `packages.config` is transitively complete. Any future package addition must have its .NET Standard 2.0 transitive dependencies added manually (check the dependency list on nuget.org; skip low-level BCL packages Unity's runtime already provides). Missing transitives compile fine locally in the editor but fail in CI where only `restore` runs.
+NuGetForUnity's CLI (`dotnet nugetforunity restore`, what CI and `build-unity` run) only downloads packages already listed — it does **not** resolve transitive dependencies; resolution happens only in the editor UI. The current `packages.config` is transitively complete. Any future package addition must have its .NET Standard 2.0 transitive dependencies added manually (check the dependency list on nuget.org; skip low-level BCL packages Unity's runtime already provides). Missing transitives compile fine locally in the editor but fail in CI where only `restore` runs.
 
 ## Slot preconditions for on-device work
 
