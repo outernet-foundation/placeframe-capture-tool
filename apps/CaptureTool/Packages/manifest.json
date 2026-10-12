@@ -3,25 +3,17 @@
     {
       "name": "npmjs",
       "url": "https://registry.npmjs.org",
-      "scopes": [
-        "com.fofx",
-        "org.outernet"
-      ]
+      "scopes": ["com.fofx", "org.outernet"]
     },
     {
       "name": "UnityNuGet",
       "url": "https://unitynuget-registry.openupm.com",
-      "scopes": [
-        "org.nuget"
-      ]
+      "scopes": ["org.nuget"]
     },
     {
       "name": "package.openupm.com",
       "url": "https://package.openupm.com",
-      "scopes": [
-        "com.cysharp",
-        "com.github-glitchenzo"
-      ]
+      "scopes": ["com.cysharp", "com.github-glitchenzo"]
     }
   ],
   "dependencies": {
@@ -46,13 +38,11 @@
     "com.unity.visualscripting": "1.9.7",
     "com.unity.xr.arcore": "6.0.6",
     "com.unity.xr.arfoundation": "6.0.6",
-    "org.outernet.placeframe.apiclient": "0.1.8-dev.36679369940",
-    "org.outernet.playerbuild": "0.1.5",
+    "org.outernet.playerbuild": "0.3.0",
     "org.outernet.placeframe.zedcaptureclient": "file:../../../packages/generated/csharp/zed-capture-client/src/PlaceframeZedCaptureClient",
-    "org.outernet.logging": "0.1.0-dev.36679369940",
-    "org.outernet.placeframe": "1.0.6-dev.36679369940",
-    "org.outernet.placeframe.arfoundation": "1.0.6-dev.36679369940",
-    "org.outernet.placeframe.auth": "0.1.0-dev.36679369940",
+    "org.outernet.logging": "2.0.0-dev.1324",
+    "org.outernet.placeframe.arfoundation": "2.0.0-dev.1324",
+    "org.outernet.placeframe.auth": "2.0.0-dev.1324",
     "com.unity.modules.accessibility": "1.0.0",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",

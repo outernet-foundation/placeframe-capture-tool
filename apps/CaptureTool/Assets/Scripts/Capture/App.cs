@@ -54,7 +54,7 @@ namespace Placeframe.Client
 #if UNITY_EDITOR
             var cameraProvider = new NoOpCameraProvider();
 #else
-            var cameraProvider = new CameraProvider(SceneReferences.ARCameraManager, SceneReferences.ARAnchorManager);
+            var cameraProvider = new ARFoundationCameraProvider(SceneReferences.ARCameraManager, SceneReferences.ARAnchorManager);
 #endif
 
             CaptureManager.Initialize(cameraProvider);
