@@ -1,0 +1,6 @@
+<linker>
+  <!-- StateObject.InitializeInternal constructs StateValue/StateValueArray/StateValueSet via
+       Activator.CreateInstance; their default constructors have no static references and are
+       removed by IL2CPP managed stripping without this preserve. -->
+  <assembly fullname="Stateful" preserve="all"/>
+</linker>
