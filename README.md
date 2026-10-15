@@ -8,7 +8,7 @@ With this application, you can log in to your Placeframe backend, capture data o
 
 ## Getting the App
 
-Stable builds of the APK are available on the [releases page](https://github.com/outernet-foundation/placeframe-capture-tool/releases/latest). Per-commit development builds are appended to the `dev-builds` draft release.
+Stable builds of the APK are available on the [releases page](https://github.com/outernet-foundation/placeframe-capture-tool/releases/latest). Every merge to `dev` publishes a `dev-{count}` prerelease with the APK and built-image table.
 
 You will need an ARCore-compatible Android phone, and a Placeframe backend deployment to point the app at (see the Placeframe repo's Quick Start).
 
