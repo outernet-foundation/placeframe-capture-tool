@@ -2,10 +2,9 @@ from logging import getLogger
 from typing import Annotated
 
 import typer
-from docker_devkit.context_sha import compute_service_shas
-from docker_devkit.documents import parse_bake
-from docker_devkit.modes import parse_env_file
 from bashrun.bash import bash_output
+from docker_devkit.documents import compute_service_shas, parse_bake
+from docker_devkit.lifecycle import parse_env_file
 from placeframe_common.logging_config import configure_logging
 
 from .box_install import install_box
