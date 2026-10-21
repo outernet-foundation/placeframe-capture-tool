@@ -78,6 +78,7 @@ namespace Placeframe.Client
                 if (cancellationToken.IsCancellationRequested)
                     return;
 
+                Log.Error(LogGroup.Auth, exception, "connect to {ApiUrl} failed", apiUrl);
                 App.ExecuteTransaction(new SetAuthStatusAction(AuthStatus.Error, DescribeDiscoveryFailure(exception)));
                 return;
             }
@@ -173,13 +174,23 @@ namespace Placeframe.Client
             if (exception is UriFormatException)
                 return "That doesn't look like a valid URL.";
 
-            // ApiException means something answered but with a non-2xx status or a body that isn't
-            // ServerInfo — a wrong host, or a Placeframe server too old to expose /server-info.
-            if (exception is PlaceframeApiClient.Client.ApiException)
-                return "This doesn't look like a Placeframe server, or it's too old.";
+            if (exception is PlaceframeApiClient.Client.ApiException apiException)
+            {
+                // ErrorContent is set only when a real HTTP error status came back (wrong host,
+                // proxy interstitial, or a Placeframe server too old to expose /server-info).
+                if (apiException.ErrorContent is string errorBody)
+                {
+                    string detail = errorBody.Length > 200 ? errorBody[..200] : errorBody;
+                    return $"This doesn't look like a Placeframe server — it answered HTTP {apiException.ErrorCode}: {detail}";
+                }
+
+                // A 2xx answer whose body failed to deserialize; the generated client wraps the
+                // parser's exception message as ApiException(500, message) with null ErrorContent.
+                return $"The server answered, but its reply couldn't be read: {apiException.Message}";
+            }
 
             // Transport failures (connection refused, DNS, timeout) — nothing answered at all.
-            return "Couldn't reach a backend at this URL.";
+            return $"Couldn't reach a backend at this URL: {exception.Message}";
         }
     }
 }
