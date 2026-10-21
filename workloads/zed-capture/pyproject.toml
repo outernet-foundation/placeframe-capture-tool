@@ -11,8 +11,8 @@ requires-python = ">=3.13, <3.14"
 # the Stereolabs base image — see zed/Dockerfile.
 dependencies = [
     # Exact pins, both at the same placeframe run id: the 2.0 dev line.
-    "placeframe-common==2.0.0.dev1324",
-    "placeframe-core==2.0.0.dev1324",
+    "placeframe-common==2.0.0.dev1340",
+    "placeframe-core==2.0.0.dev1340",
     "scipy>=1.16.1",
     "uvicorn>=0.35.0",
     "litestar>=2.19.0",

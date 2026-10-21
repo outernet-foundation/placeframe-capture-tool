@@ -685,7 +685,7 @@ dev = [
 
 [[package]]
 name = "placeframe-common"
-version = "2.0.0.dev1324"
+version = "2.0.0.dev1340"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -694,14 +694,14 @@ dependencies = [
     { name = "logger-conf", extra = ["otlp"] },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c0/e6/c01c581977bcb2a649c6fe258900418677a6355dae598f665167b436aa02/placeframe_common-2.0.0.dev1324.tar.gz", hash = "sha256:4211126d53d20631585df92cffea02e2d87a08dc7292f2ba9cbacd293c68a4fe", size = 6512, upload-time = "2026-10-11T23:59:01.016Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/68/663df537f0164435567fdda8f78d3bc41cf9b8309b528bd6aa092d4eba4d/placeframe_common-2.0.0.dev1340.tar.gz", hash = "sha256:d7ae0e844e268ed4efb63ec14e6a6b3017e8641e34347f9e33f07f1a99318af6", size = 6511, upload-time = "2026-10-21T20:15:33.893Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/88/a90951ce95ce2c9c3a42f6d44e2b597c42f02a05fa029c034170804777ee/placeframe_common-2.0.0.dev1324-py3-none-any.whl", hash = "sha256:988c52a09098e8648b61750d90a36b246dc5e3f1d4192e487660aec16aa1701e", size = 7493, upload-time = "2026-10-11T23:58:59.997Z" },
+    { url = "https://files.pythonhosted.org/packages/71/4f/a116b0d3386b0b4dd2b6c25e1e214a6602258a29af005f4aaa217fc1c97a/placeframe_common-2.0.0.dev1340-py3-none-any.whl", hash = "sha256:92815b6120ba07de0ace1c1109728b46cb9fb92d2a90cabab4b332288bc68ae3", size = 7493, upload-time = "2026-10-21T20:15:33.087Z" },
 ]
 
 [[package]]
 name = "placeframe-core"
-version = "2.0.0.dev1324"
+version = "2.0.0.dev1340"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "faiss-cpu" },
@@ -711,9 +711,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/00/82/e7a8943cd23820d13b051bb5fe29ef5a840e01b61a79ebb9949a1c202a92/placeframe_core-2.0.0.dev1324.tar.gz", hash = "sha256:ac9b2dddcc90a271d3abb93743f9e4cdecc32188ed9b67a33539d2ff6f0d2ff8", size = 17015, upload-time = "2026-10-11T23:59:03.84Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/28/abb3220c0485f4b81d60f108666a86b21835a35c586ac98334d6f81daec8/placeframe_core-2.0.0.dev1340.tar.gz", hash = "sha256:7599f1ef04778864999aa608b84c575909e4fff92a29d2ecf5c6190db42a38ed", size = 17015, upload-time = "2026-10-21T20:15:36.781Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/ce/9252fff6d0655fb036f294ca7480d42fef6dd8e21afe143a25668383b6b9/placeframe_core-2.0.0.dev1324-py3-none-any.whl", hash = "sha256:c19dcfb24670de1a1019c39de57140c7f261a9bdf0b706e68848c80e05c2ca7c", size = 16480, upload-time = "2026-10-11T23:59:02.993Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/e1/9dc2f3dee60b9a3f7fa847b84407ce35c1868ea95eb688730737fa270aac/placeframe_core-2.0.0.dev1340-py3-none-any.whl", hash = "sha256:78e4466b64e59f083b0ec3ea8d0c5003bc1da17dffbb55ac8235c70ce501723b", size = 16478, upload-time = "2026-10-21T20:15:35.91Z" },
 ]
 
 [[package]]
@@ -1008,7 +1008,7 @@ dependencies = [
 requires-dist = [
     { name = "bashrun", specifier = ">=0.1.0" },
     { name = "docker-devkit", specifier = ">=0.1.15" },
-    { name = "placeframe-common", specifier = "==2.0.0.dev1324" },
+    { name = "placeframe-common", specifier = "==2.0.0.dev1340" },
     { name = "typer", specifier = ">=0.15" },
 ]
 
@@ -1159,8 +1159,8 @@ requires-dist = [
     { name = "litestar", specifier = ">=2.19.0" },
     { name = "numpy", specifier = ">=2.4.0" },
     { name = "pillow", specifier = ">=12.1.0" },
-    { name = "placeframe-common", specifier = "==2.0.0.dev1324" },
-    { name = "placeframe-core", specifier = "==2.0.0.dev1324" },
+    { name = "placeframe-common", specifier = "==2.0.0.dev1340" },
+    { name = "placeframe-core", specifier = "==2.0.0.dev1340" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "scipy", specifier = ">=1.16.1" },
     { name = "uvicorn", specifier = ">=0.35.0" },
