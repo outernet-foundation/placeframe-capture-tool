@@ -1,6 +1,13 @@
 <linker>
-  <!-- StateObject.InitializeInternal constructs StateValue/StateValueArray/StateValueSet via
-       Activator.CreateInstance; their default constructors have no static references and are
-       removed by IL2CPP managed stripping without this preserve. -->
+  <!-- Reflection-only roots, invisible to IL2CPP managed stripping. -->
+  <!-- Stateful: state values constructed via Activator.CreateInstance. -->
   <assembly fullname="Stateful" preserve="all"/>
+  <!-- PlaceframeApiClient: generated DTOs serialized via Newtonsoft reflection. -->
+  <assembly fullname="PlaceframeApiClient" preserve="all"/>
+  <!-- PlaceframeZedCaptureClient: generated zed DTOs with in-assembly JsonConverters. -->
+  <assembly fullname="PlaceframeZedCaptureClient" preserve="all"/>
+  <!-- Newtonsoft.Json: DTO enums carry [JsonConverter(typeof(StringEnumConverter))], whose
+       constructor is only ever instantiated through Activator reflection — preserving the DTO
+       assembly is not enough, the converter constructor lives here and gets stripped. -->
+  <assembly fullname="Newtonsoft.Json" preserve="all"/>
 </linker>
