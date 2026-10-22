@@ -14,12 +14,23 @@ Use `uv run --locked build-unity` (or `uvx --from unity-devkit build-unity`) for
 
 ```
 uv run --locked build-unity --project CaptureTool --platform AndroidMobile
-adb install -r apps/CaptureTool/Build/Capture_Tool.apk   # path is printed at end of build
+adb install -r -d apps/CaptureTool/Build/Capture_Tool.apk   # path is printed at end of build
 ```
 
 Both `--project` and `--platform` are required. `--project` is the `name` field of the project's `unity-devkit.json`; `--platform` is a key of its `platforms` map. Absent `--registry` the verb is the local build: it preps NuGet/dotnet tools, builds Unity in batchmode via the playerbuild entry, streams the log, and prints the produced APK path on success. Use the same command for a "did this `.cs` change compile?" sanity check — Unity bails fast on `error CS####` before the Android build starts.
 
 The CI shape is the same verb plus `--registry` (license/UPM/library caches, version stamping, build-output shelving) — not usable from a slot.
+
+**Local signing**: CI signs with the repo keystore (the `ANDROID_*` repo secrets, threaded by the binding's build-unity). A local build that must install over a CI build (or vice versa) needs the same key — export the quartet in the shell before `build-unity` / `install --build`:
+
+```
+export KEYSTORE_PATH="$HOME/.keystores/capturetool.keystore"
+export KEYSTORE_PASSWORD=...
+export KEYSTORE_ALIAS=capturetool
+export KEYSTORE_ALIAS_PASSWORD=...
+```
+
+All four or none — a partial set fails the build loudly; none falls back to the machine's debug keystore (which Android then refuses to install over the properly-signed install). Without the exports a plain compile sanity check works fine.
 
 `build-unity` goes through `unity_batchmode_command`, which prefixes `env -u ADB_SERVER_SOCKET` on non-Windows. Background: Unity's Android build module runs `adb kill-server` on teardown. Since every slot has `ADB_SERVER_SOCKET` forwarded to the host adb daemon (set unconditionally by `uv run agent-shell`), an unscrubbed kill propagates through the socket and terminates the *host-side* server — next `adb` call from the slot then fails with `Connection refused` until the host runs `adb -a -P 5037 start-server` again. The `env -u` strip in `unity_batchmode_command` confines Unity's adb dance to a local daemon inside the slot. Direct `/opt/unity/.../Unity` invocations bypass that guard, which is why the rule is "always `build-unity`."
 
@@ -35,7 +46,7 @@ The Pixel has one USB-C port. In end-to-end testing the ZED cable occupies it, w
 
 `LogcatRelay` (`Assets/Scripts/LogcatRelay.cs`) tails Android's logcat in a background thread and forwards filtered lines (USB / accessory framework tags) through Serilog into the existing Loki sink, so phone-side diagnosis of `UsbHostManager` / `UsbDeviceManager` decisions does not require swapping the debug cable. The reader runs unconditionally, but the kernel only exposes other processes' lines to apps holding `android.permission.READ_LOGS`. That permission is `signature|privileged|development`, so install-time grant is impossible; the `development` flag is what lets `pm grant` satisfy it at runtime.
 
-After every fresh install of the Capture Tool, the grant has to be re-applied — it persists across reboots and app launches but is lost on uninstall. The install tool no longer grants it (device-state setup ruled out of the installer's scope): apply it by hand after installing —
+After every fresh install of the Capture Tool, the grant has to be re-applied — it persists across reboots, app launches, and same-signature `adb install -r` updates, but is lost on uninstall. Builds are signed with the repo keystore (CI reads the `ANDROID_*` repo secrets; local shells must export the quartet below), so updates replace in place and no longer force the uninstall that used to wipe the grant. The install tool no longer grants it (device-state setup ruled out of the installer's scope): apply it by hand after a true fresh install —
 
 `uvx --from unity-devkit install --build --project CaptureTool` builds, installs, and applies the grant in one step (same `grant_permissions` path as above) — prefer it for local deploys. Only when you've hand-built with `build-unity` + `adb install` does the grant have to be applied manually:
 
