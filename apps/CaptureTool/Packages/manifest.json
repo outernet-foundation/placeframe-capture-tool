@@ -38,7 +38,7 @@
     "com.unity.visualscripting": "1.9.7",
     "com.unity.xr.arcore": "6.0.6",
     "com.unity.xr.arfoundation": "6.0.6",
-    "org.outernet.playerbuild": "0.3.0",
+    "org.outernet.playerbuild": "0.3.1",
     "org.outernet.placeframe.zedcaptureclient": "file:../../../packages/generated/csharp/zed-capture-client/src/PlaceframeZedCaptureClient",
     "org.outernet.logging": "2.0.0-dev.1340",
     "org.outernet.placeframe": "2.0.0-dev.1340",

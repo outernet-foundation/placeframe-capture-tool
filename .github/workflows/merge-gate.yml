@@ -14,6 +14,6 @@ permissions:
 
 jobs:
   merge-gate:
-    uses: outernet-foundation/github-actions-toolkit/.github/workflows/merge-gate.yml@df490c038086884d9a089f8fc6c64c6b99c4682c
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/merge-gate.yml@4aa3a68c350591d105f118f7527c2b12b13b7de0
     secrets:
       merge-bot-private-key: ${{ secrets.MERGE_BOT_APP_PRIVATE_KEY }}
