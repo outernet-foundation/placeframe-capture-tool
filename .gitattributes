@@ -1,3 +1,3 @@
 * text=auto eol=lf
-workloads/images.lock merge=ours
+docker-devkit.lock merge=ours
 ruff.base.toml -text
