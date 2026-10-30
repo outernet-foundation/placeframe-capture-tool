@@ -6,6 +6,12 @@
   <assembly fullname="PlaceframeApiClient" preserve="all"/>
   <!-- PlaceframeZedCaptureClient: generated zed DTOs with in-assembly JsonConverters. -->
   <assembly fullname="PlaceframeZedCaptureClient" preserve="all"/>
+  <!-- Assembly-CSharp: app DTOs via Newtonsoft, and the state classes Stateful reflects over. -->
+  <assembly fullname="Assembly-CSharp" preserve="all"/>
+  <!-- Outernet.Logging: Loki push payload serializes anonymous types via Newtonsoft. -->
+  <assembly fullname="Outernet.Logging" preserve="all"/>
+  <!-- Placeframe.Auth: token responses deserialized via Newtonsoft reflection. -->
+  <assembly fullname="Placeframe.Auth" preserve="all"/>
   <!-- Newtonsoft.Json: DTO enums carry [JsonConverter(typeof(StringEnumConverter))], whose
        constructor is only ever instantiated through Activator reflection — preserving the DTO
        assembly is not enough, the converter constructor lives here and gets stripped. -->
