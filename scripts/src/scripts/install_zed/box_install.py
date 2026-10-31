@@ -13,6 +13,9 @@ from typing import NoReturn
 
 import typer
 from bashrun.bash import bash, bash_check, bash_output, bash_pipe
+from docker_devkit.config import DockerDevkitConfig
+from docker_devkit.documents import render_bake
+from docker_devkit.host import host_platform
 
 from .constants import (
     APPLIANCE_BANNER_PATHS,
@@ -21,7 +24,6 @@ from .constants import (
     APPLIANCE_SYSTEM_UNITS_TO_MASK,
     APPLIANCE_USER_UNITS_TO_MASK,
     ALLOY_CONFIG_SOURCE,
-    BAKE_FILE,
     BOX_IP,
     BOX_REACHABLE_PROBE_SECONDS,
     BOX_SSH_TARGET,
@@ -76,7 +78,9 @@ logger = getLogger(__name__)
 FACTORY_LOGIN = "admin"
 
 
-def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, str]) -> None:
+def install_box(
+    build: bool, config: DockerDevkitConfig, service_shas: dict[str, str], env_lock: dict[str, str]
+) -> None:
     # Fail before touching the box if the host can't actually cross-build the
     # arm64 images — otherwise the missing prerequisite only surfaces as an
     # opaque `exec format error` mid-build, after the box has been reconfigured.
@@ -164,7 +168,7 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # (default), or cross-compile via the local registry (--build). The
         # stock observability images are never built locally — digest-pinned
         # mirror pulls shipped from the host in both modes.
-        images = _acquire_images(host_ip, build, service_shas, env_lock)
+        images = _acquire_images(host_ip, build, config, service_shas, env_lock)
 
         # Ship the compose file and supporting scripts. The aoa-alloy /
         # aoa-loki configs ship as files beside the compose file and mount
@@ -447,7 +451,7 @@ def _ensure_arm64_emulation() -> None:
 
 
 def _acquire_images(
-    host_ip: str, build: bool, service_shas: dict[str, str], env_lock: dict[str, str]
+    host_ip: str, build: bool, config: DockerDevkitConfig, service_shas: dict[str, str], env_lock: dict[str, str]
 ) -> dict[str, str]:
     stock_references = [env_lock[image.image_env] for image in ZED_STOCK_IMAGES]
 
@@ -482,17 +486,21 @@ def _acquire_images(
             for service in ZED_SERVICES
         }
 
-        logger.info("cross_compiling_images", extra={"bake_file": str(BAKE_FILE)})
+        logger.info("cross_compiling_images")
         # Mirrors docker-devkit's build verb: the bake env carries the service
-        # SHAs plus the full images.lock — the Dockerfiles' base-image ARGs have
+        # SHAs plus the full docker-devkit.lock — the Dockerfiles' base-image ARGs have
         # no defaults, so a missing key is a hard bake error, not a fallback.
         env_prefix = " ".join(f"{k}={v}" for k, v in {**service_shas, **env_lock}.items())
         set_flags = " ".join(f"--set {service.name}.tags={local_images[service.name]}" for service in ZED_SERVICES)
         bake_targets = " ".join(service.name for service in ZED_SERVICES)
-        bash(
-            f"env {env_prefix} docker buildx bake -f {BAKE_FILE} {set_flags}"
-            f" --push --provenance=false --sbom=false {bake_targets}",
-        )
+        # push=False renders no registry cache refs: their home is ghcr, which a
+        # deploy host reaches anonymously at best, and the --set flags retarget
+        # every tag at the local registry anyway.
+        rendered = render_bake(config, push=False, host=host_platform())
+        with tempfile.TemporaryDirectory(prefix="bake-") as bake_directory:
+            bake_file = Path(bake_directory) / "bake.yaml"
+            bake_file.write_text(rendered, encoding="utf-8")
+            _run_bake(bake_file, env_prefix, set_flags, bake_targets, rendered)
 
         # Docker treats `localhost` as insecure-by-default for push; the box's
         # daemon needs the box-facing host IP in its insecure-registries. The
@@ -528,6 +536,21 @@ def _pull_image_on_host(reference: str, platform: str | None = None) -> None:
     logger.info("pulling_image_on_host", extra={"image": reference, "platform": platform})
     platform_option = f"--platform {platform} " if platform else ""
     bash(f"docker pull {platform_option}{reference}")
+
+
+def _run_bake(bake_file: Path, env_prefix: str, set_flags: str, bake_targets: str, rendered: str) -> None:
+    # The temp bake file vanishes with its directory, so a failed bake re-raises
+    # with the rendered content attached — the failure stays inspectable after
+    # the run.
+    try:
+        bash(
+            f"env {env_prefix} docker buildx bake -f {bake_file} {set_flags}"
+            f" --push --provenance=false --sbom=false {bake_targets}"
+        )
+    except CalledProcessError as error:
+        raise RuntimeError(
+            f"docker buildx bake failed (exit {error.returncode}); rendered bake file:\n{rendered}"
+        ) from error
 
 
 def _ship_images_to_box(tagged_references: list[str], stock_references: list[str]) -> None:

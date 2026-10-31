@@ -3,13 +3,13 @@ from typing import Annotated
 
 import typer
 from bashrun.bash import bash_output
-from docker_devkit.documents import compute_service_shas, parse_bake
-from docker_devkit.lifecycle import parse_env_file
+from docker_devkit.config import load_config
+from docker_devkit.documents import compute_service_shas
+from docker_devkit.host import parse_env_file
 from placeframe_common.logging_config import configure_logging
 
 from .box_install import install_box
 from .constants import (
-    BAKE_FILE,
     BOX_SSH_TARGET,
     ENV_LOCK_FILE,
     REPO_ROOT,
@@ -31,7 +31,10 @@ def main(
 ) -> None:
     configure_logging("install-zed", log_file_path=REPO_ROOT / ".placeframe" / "logs" / "install-zed.jsonl")
     logger.info("starting_install", extra={"target": BOX_SSH_TARGET, "build": build})
-    service_shas = compute_service_shas(REPO_ROOT, parse_bake(BAKE_FILE))
+    config = load_config(REPO_ROOT)
+    if config is None:
+        raise SystemExit("docker-devkit.yaml not found at the repo root")
+    service_shas = compute_service_shas(REPO_ROOT, config)
     env_lock = parse_env_file(ENV_LOCK_FILE)
 
     SSH_STATE_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -40,4 +43,4 @@ def main(
         logger.info("generating_ssh_key", extra={"path": str(SSH_KEY)})
         bash_output(f'ssh-keygen -t ed25519 -N "" -f {SSH_KEY}')
 
-    install_box(build, service_shas, env_lock)
+    install_box(build, config, service_shas, env_lock)

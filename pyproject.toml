@@ -12,7 +12,7 @@ dev = [
     "ruff>=0.14.11,<0.15",
     "pytest>=8.0.0",
     "bashrun>=0.8",
-    "docker-devkit>=0.4",
+    "docker-devkit==0.4.9.dev165",
     "openapi-client-codegen>=0.3",
     "python-devkit>=0.3",
     "unity-devkit>=0.3",
