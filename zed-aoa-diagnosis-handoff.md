@@ -66,13 +66,18 @@ ce8c2868ca0877a56f1d2efd48a9a601011`. Cross-checking digests: use
 
 ## Next-session plan (in order)
 
-1. Fix docker-devkit's `--lock-only` resolver to pin per-arch arm64 manifests (never
-   the index, never attestation entries — as its own docs claim). Devkit is a PyPI
-   dependency; bump the pin (and the `requires` floor) in this repo.
+1. Implement the platform-resolved lock in docker-devkit per its
+   `plan-platform-resolved-lock.md`: `platforms` required whenever `base_images`
+   is declared; the lock becomes YAML (`NAME → {index, platforms}` with per-arch
+   manifest digests — never a bare index, never attestation entries); env is
+   synthesized at the compose/bake edges, with a `lock-env` verb preserving the
+   raw-compose valve. Devkit is a PyPI dependency; bump the pin (and the
+   `requires` floor) in this repo.
 2. Regenerate: `env -u UV_PYTHON PATH="$HOME/.local/bin:$PATH" uv run build
    --lock-only` from the repo root (sandbox is fine — registry queries only). Verify
-   the lock diff swaps LOKI/ALLOY (and ideally the rest) to concrete arm64 manifest
-   digests, and spot-check one pinned digest resolves to a manifest, not an index.
+   the lock diff lands the new YAML shape with LOKI/ALLOY (and ideally the rest)
+   carrying concrete arm64 manifest digests, and spot-check one pinned digest
+   resolves to a manifest, not an index.
 3. Commit the relock (generated but committed artifact; own commit).
 4. Deploy from the **host shell**: `uv run install-zed --build` at
    `~/repos/placeframe-capture-tool` on branch `compose-bundles` (6398426 + the relock
