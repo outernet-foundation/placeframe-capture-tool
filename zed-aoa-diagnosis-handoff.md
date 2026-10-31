@@ -1,10 +1,11 @@
 # ZED-box AOA diagnosis handoff (sessions of 2026-10-30 evening)
 
 Status: **root causes found — two, both box-side, both broken-from-birth.** The gateway
-fix is committed; the deploy is deliberately deferred until docker-devkit's lock
-resolver is fixed and the lock regenerated (operator decision — no hand-patching).
-Phone-side evidence from the first session is fully explained; nothing further to
-chase on the phone.
+fix is committed; the deploy is deliberately deferred until docker-devkit's
+artifact-identity plan delivers the platform-resolved lock (ADR Part 0, cluster
+P0+P1) and this repo relocks onto it (operator decision — no hand-patching, no
+fast-track release). Phone-side evidence from the first session is fully
+explained; nothing further to chase on the phone.
 
 ## Finding 1: aoa-gateway has never started (Caddyfile h2c-without-h1)
 
@@ -66,33 +67,32 @@ ce8c2868ca0877a56f1d2efd48a9a601011`. Cross-checking digests: use
 
 ## Next-session plan (in order)
 
-1. Implement the platform-resolved lock in docker-devkit per its
-   `plan-platform-resolved-lock.md`: `platforms` required whenever `base_images`
-   is declared; the lock becomes YAML (`NAME → {index, platforms}` with per-arch
-   manifest digests — never a bare index, never attestation entries); env is
-   synthesized at the compose/bake edges, with a `lock-env` verb preserving the
-   raw-compose valve. Devkit is a PyPI dependency; bump the pin (and the
-   `requires` floor) in this repo.
-2. Regenerate: `env -u UV_PYTHON PATH="$HOME/.local/bin:$PATH" uv run build
-   --lock-only` from the repo root (sandbox is fine — registry queries only). Verify
-   the lock diff lands the new YAML shape with LOKI/ALLOY (and ideally the rest)
-   carrying concrete arm64 manifest digests, and spot-check one pinned digest
-   resolves to a manifest, not an index.
-3. Commit the relock (generated but committed artifact; own commit).
-4. Deploy from the **host shell**: `uv run install-zed --build` at
-   `~/repos/placeframe-capture-tool` on branch `compose-bundles` (6398426 + the relock
-   commit). Host binfmt/bake is the proven path (the current arm64 first-party images
+1. Wait on docker-devkit: the lock fix is Part 0 of its artifact-identity ADR
+   (`plan-artifact-identity.md`), delivered by the implementation plan
+   (`plan-artifact-identity-implementation.md`, cluster P0+P1, phases 1-7);
+   that plan links back to this doc. Nothing to do in this repo until the
+   cluster-P0+P1 devkit release exists.
+2. On that release: repin docker-devkit (exact pin in `pyproject.toml` plus
+   the `requires` floor in `docker-devkit.yaml`), then relock —
+   `env -u UV_PYTHON PATH="$HOME/.local/bin:$PATH" uv run build --lock-only`
+   from the repo root (sandbox is fine — registry queries only). Verify the
+   structured YAML lock lands with arm64 manifest dishes for LOKI/ALLOY, and
+   spot-check one dish resolves to a manifest, not an index. Commit the
+   relock (generated artifact; own commit).
+3. Deploy from the **host shell**: `uv run install-zed --build` at
+   `~/repos/placeframe-capture-tool` on branch `compose-bundles` (6398426 + the
+   repin/relock commits). Host binfmt/bake is the proven path (the current arm64 first-party images
    on the box were baked that way); zed-capture/aoa-bridge layers are warm-cached.
-5. Verify on the box over ssh:
+4. Verify on the box over ssh:
    - `sudo docker ps` — all five Up (gateway no longer exit-1; loki/alloy no longer 255)
    - `wget -qO- http://127.0.0.1:9001/status` (uvicorn direct) and the h2c terminator
      on :9000 (`curl --http2-prior-knowledge` if the box curl supports http2)
    - `sudo docker logs placeframe-aoa-gateway-1` — provisioned cleanly, `protocols
      h1 h2c` in the adapted-config debug line
-6. Live repro: phone on the box's USB-A, CaptureTool → ZED mode; watch for `AOA res`
+5. Live repro: phone on the box's USB-A, CaptureTool → ZED mode; watch for `AOA res`
    in `{app="capture-tool"} | json | logGroup="Zed"` and Record enabling after the
    first `/status` 200.
-7. Then the queued phone-side amplifier fix (fact 5 below) — kept out of this session
+6. Then the queued phone-side amplifier fix (fact 5 below) — kept out of this session
    deliberately so the box verification runs against a single changed variable.
 
 ## Reaching the box (unchanged, proven)
