@@ -2,8 +2,9 @@
 
 Status: **root causes found — two, both box-side, both broken-from-birth.** The gateway
 fix is committed; the deploy is deliberately deferred until docker-devkit's
-artifact-identity plan delivers the platform-resolved lock (ADR Part 0, cluster
-P0+P1) and this repo relocks onto it (operator decision — no hand-patching, no
+consumer-contract initiative delivers the platform-resolved lock
+(`plan-consumer-contract-implementation.md`, phases 2–5; this repo's relock
+rides its phase 9 catch-up wave) (operator decision — no hand-patching, no
 fast-track release). Phone-side evidence from the first session is fully
 explained; nothing further to chase on the phone.
 
@@ -67,17 +68,18 @@ ce8c2868ca0877a56f1d2efd48a9a601011`. Cross-checking digests: use
 
 ## Next-session plan (in order)
 
-1. Wait on docker-devkit: the lock fix is Part 0 of its artifact-identity ADR
-   (`plan-artifact-identity.md`), delivered by the implementation plan
-   (`plan-artifact-identity-implementation.md`, cluster P0+P1, phases 1-7);
-   that plan links back to this doc. Nothing to do in this repo until the
-   cluster-P0+P1 devkit release exists.
+1. Wait on docker-devkit: the lock fix is Part 0 of its artifact-identity
+   ADR, absorbed into the consumer-contract initiative
+   (`plan-consumer-contract.md`) and delivered by its implementation plan
+   (`plan-consumer-contract-implementation.md` — lock phases 2–5, this
+   repo's relock in the phase 9 wave); that plan links back to this doc.
+   Nothing to do in this repo until that devkit release exists.
 2. On that release: repin docker-devkit (exact pin in `pyproject.toml` plus
    the `requires` floor in `docker-devkit.yaml`), then relock —
    `env -u UV_PYTHON PATH="$HOME/.local/bin:$PATH" uv run build --lock-only`
    from the repo root (sandbox is fine — registry queries only). Verify the
-   structured YAML lock lands with arm64 manifest dishes for LOKI/ALLOY, and
-   spot-check one dish resolves to a manifest, not an index. Commit the
+   structured YAML lock lands with arm64 platform manifests for LOKI/ALLOY,
+   and spot-check one resolves to a manifest, not an index. Commit the
    relock (generated artifact; own commit).
 3. Deploy from the **host shell**: `uv run install-zed --build` at
    `~/repos/placeframe-capture-tool` on branch `compose-bundles` (6398426 + the
