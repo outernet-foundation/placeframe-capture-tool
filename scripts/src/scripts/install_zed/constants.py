@@ -60,13 +60,16 @@ REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
 REMOTE_LOKI_CONFIG = f"{REMOTE_DIR}/box.yaml"
 REMOTE_ALLOY_CONFIG = f"{REMOTE_DIR}/config.alloy"
 # Shared exec line for the offline camera-open assertion and the pre-seed
-# serial probe: pyzed's open() returns an error code instead of raising, so
-# the exit status is the assertion and the SDK's stderr diagnostics ride
-# along with the failure.
+# serial probe. Runs the service's own probe module (src/open_camera_probe.py)
+# in the container, opening with the capture actor's exact InitParameters via
+# build_init_parameters() — the assertion exercises the real open path, and
+# the depth-model optimization the service's depth mode needs lands here at
+# install time instead of stalling the first field start by minutes. pyzed's
+# open() returns an error code instead of raising, so the module's exit status
+# is the assertion and the SDK's stderr diagnostics (GMSL init banner
+# included) ride along with the failure.
 CAMERA_OPEN_PROBE = (
-    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
-    '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); '
-    'e = c.open(p); c.close(); raise SystemExit(0 if e == sl.ERROR_CODE.SUCCESS else 1)"'
+    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture uv run --no-sync python -m src.open_camera_probe"
 )
 # Box-side source of the compose bind mount into the container's
 # /usr/local/zed/settings — where the seeded per-camera calibration lives.

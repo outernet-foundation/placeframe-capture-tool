@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
 from queue import Empty, Queue
+from shutil import rmtree
 from socket import AF_UNIX, SOCK_STREAM, socket
 from threading import Thread
 from time import monotonic, perf_counter, sleep, time
@@ -19,14 +20,10 @@ from placeframe_core.transform import Float3, Float4
 from numpy import asarray, float64, ndarray
 from PIL import Image
 from pyzed.sl import (  # pyright: ignore[reportMissingModuleSource]
-    COORDINATE_SYSTEM,
-    DEPTH_MODE,
     POSITIONAL_TRACKING_MODE,
     POSITIONAL_TRACKING_STATE,
     REFERENCE_FRAME,
-    RESOLUTION,
     SVO_COMPRESSION_MODE,
-    UNIT,
     VIDEO_SETTINGS,
     VIEW,
     Camera,
@@ -41,6 +38,7 @@ from scipy.spatial.transform import Rotation
 
 from .zed_wrapper import (
     CameraOpenError,
+    build_init_parameters,
     close_camera,
     disable_positional_tracking,
     disable_recording,
@@ -134,9 +132,11 @@ class Zed(Thread):
         self._stabilize_deadline: float | None = None
         self._tracking_state: str = POSITIONAL_TRACKING_STATE.OFF.name
         self._last_exception: str | None = None
+        self._last_exception_is_open_failure = False
         self._next_reprobe_time: float = 0.0
 
         self._camera = Camera()
+        self._camera_is_open = False
         self._pose = Pose()
 
         # Bounded so the writer never silently leaks behind; 4 slots is ~2 s of
@@ -181,6 +181,7 @@ class Zed(Thread):
 
                     self._current_id = uuid4()
                     self._last_exception = None
+                    self._last_exception_is_open_failure = False
                     self._capture_interval = command.interval
                     self._next_capture_time = None
                     self._consecutive_ok_frames = 0
@@ -189,11 +190,14 @@ class Zed(Thread):
                     try:
                         self._start()
                     except Exception as e:
+                        session_directory = self._output_directory()
                         self._current_id = None
                         self._capture_interval = None
                         self._next_capture_time = None
                         self._stabilize_deadline = None
                         self._last_exception = str(e)
+                        self._last_exception_is_open_failure = isinstance(e, CameraOpenError)
+                        self._teardown_partial_start(session_directory)
                         command.reply.set_exception(e)
                         continue
 
@@ -233,6 +237,7 @@ class Zed(Thread):
             except Exception as e:
                 logger.exception("Exception occurred during frame capture")
                 self._last_exception = str(e)
+                self._last_exception_is_open_failure = False
 
     def _queue_timeout(self) -> float:
         if self._current_id is None:
@@ -241,6 +246,12 @@ class Zed(Thread):
 
     def _clear_latched_exception_if_camera_recovered(self) -> None:
         if self._last_exception is None:
+            return
+
+        # The camera-reachable reprobe speaks only to open failures (cold-boot
+        # daemon races). Any other failure persists until the next start
+        # attempt clears it, so the phone can still read why the last one died.
+        if not self._last_exception_is_open_failure:
             return
 
         now = monotonic()
@@ -322,16 +333,9 @@ class Zed(Thread):
 
         logger.info("Opening ZED camera")
 
-        init = InitParameters()
-        init.camera_resolution = RESOLUTION.HD1080
-        init.coordinate_units = UNIT.METER
-        # IMAGE is the OpenCV axis convention the manifest declares and the reconstructor assumes.
-        init.coordinate_system = COORDINATE_SYSTEM.IMAGE
-        init.camera_fps = 30
-        init.enable_image_enhancement = True
-        init.sdk_verbose = True
-        init.depth_mode = DEPTH_MODE.NEURAL_LIGHT
+        init = build_init_parameters()
         self._open_camera_with_retry(init)
+        self._camera_is_open = True
 
         if get_camera_settings(self._camera, VIDEO_SETTINGS.SHARPNESS) != 4:
             set_camera_settings(self._camera, VIDEO_SETTINGS.SHARPNESS, 4)
@@ -474,7 +478,26 @@ class Zed(Thread):
         disable_recording(self._camera)
         disable_positional_tracking(self._camera)
         close_camera(self._camera)
+        self._camera_is_open = False
         logger.info("Capture stopped")
+
+    def _teardown_partial_start(self, session_directory: Path) -> None:
+        # _start() creates the session directory before it opens the camera,
+        # so a mid-_start failure leaves an empty recording tree (and possibly
+        # a started SVO recording and open camera handle) behind. Roll all of
+        # it back: no meta was written (the router only writes meta on
+        # success), so removing the directory leaves nothing orphaned.
+        rmtree(session_directory, ignore_errors=True)
+
+        if not self._camera_is_open:
+            return
+
+        self._camera_is_open = False
+        try:
+            disable_recording(self._camera)
+            close_camera(self._camera)
+        except Exception:
+            logger.exception("Camera teardown after failed start did not complete cleanly")
 
     def _advance_tracker(self) -> POSITIONAL_TRACKING_STATE:
         # grab() is the single ingestion point: inside it the SDK fuses IMU and
