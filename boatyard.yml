@@ -1,4 +1,5 @@
-requires: ">=0.4.9.dev165"
+requires: ">=0.6.5"
+project_name: placeframe-capture-tool
 repository: ghcr.io/outernet-foundation/placeframe-capture-tool
 platforms:
   - linux/arm64

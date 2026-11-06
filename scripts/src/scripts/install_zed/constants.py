@@ -2,8 +2,6 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
-from docker_devkit.config import LOCK_PATH
-
 
 @dataclass(frozen=True)
 class ZedService:
@@ -13,14 +11,13 @@ class ZedService:
     # Env var compose.rig.yml uses to override the image (`${X:-default}`). Asymmetric
     # with name (`zed-capture` → `ZED_IMAGE`, not `ZED_CAPTURE_IMAGE`), so listed explicitly.
     image_env: str
-    # Key into the dict returned by `compute_service_shas`.
+    # Env var name carrying the service's tree tag.
     sha_key: str
 
 
 @dataclass(frozen=True)
 class StockImage:
-    # Key into docker-devkit.lock carrying the full pinned reference
-    # (`path:tag@sha256:…`), pullable and compose-resolvable as-is.
+    # Key into boatyard.lock.yml carrying the arm64 manifest reference.
     image_env: str
 
 
@@ -34,7 +31,7 @@ ZED_SERVICES: tuple[ZedService, ...] = (
 )
 
 # Observability stock images consumed straight from the org mirror,
-# full per-arch arm64 refs from docker-devkit.lock — never built locally,
+# full per-arch arm64 refs from boatyard.lock.yml — never built locally,
 # pulled on the host and shipped to the box in both install modes.
 ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
     StockImage("LOKI_IMAGE"),
@@ -52,7 +49,7 @@ SYSTEMD_UNIT_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "placeframe-zed.
 WAIT_FOR_ZED_CAMERA_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "wait_for_zed_camera.py"
 LOKI_BOX_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "box.yaml"
 ALLOY_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "config.alloy"
-ENV_LOCK_FILE = REPO_ROOT / LOCK_PATH
+LOCK_FILE = REPO_ROOT / "boatyard.lock.yml"
 REMOTE_DIR = "~/.placeframe"
 REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
