@@ -27,7 +27,8 @@ The runtime is a `threading.Thread`-based actor.
 - `src/zed/zed.py` — `Zed` is the camera actor. `start_capture` / `stop_capture` enqueue command messages; the actor thread owns the SDK handle and serializes all SDK calls onto its own thread. `Zed.run()` polls the command queue and ticks the camera between commands. `Zed._tick()` is the per-tick body. `Zed._advance_tracker()` calls `grab()` + `update_pose()`; `Zed._persist_current_frame()` writes a stereo JPEG pair and a `frames.csv` row.
 - `src/zed/zed_wrapper.py` — thin pyzed `sl.Camera` wrapper that converts SDK error codes to Python exceptions and pose getters to numpy arrays. The single boundary between Python and the C-bound SDK.
 - `src/zed/zed_stub.py` — non-rig stub for running without a camera attached. Used for shape-only tests.
-- `src/routers/captures.py` — REST surface (`/start`, `/stop`, `/captures`, `/captures/{id}` tar download). Endpoints dispatch to the actor via the worker-thread pool.
+- `src/routers/capture_sessions.py` — REST surface (`/capture_sessions/start`, `/stop`, listing, patch, tar download, deletes). Endpoints dispatch to the actor via the worker-thread pool.
+- `src/open_camera_probe.py` — standalone open with the actor's exact `InitParameters` (`build_init_parameters` in `zed_wrapper`); install-zed's closing assertion execs it in-container so the depth-model TensorRT optimization lands at install time, not on the first field start.
 - `wait_for_zed_camera.py` — boot guard that blocks until both nvargus's socket is connectable *and* `/dev/video0` + `/dev/video1` exist before the stack starts. See "Start the stack from the systemd unit, not the docker restart policy" below.
 - `placeframe-zed.service` — box-side systemd unit installed by `install-zed`; the `compose.rig.yml` overlay it starts lives at the repo root.
 
@@ -43,7 +44,7 @@ The tracker-advance-vs-persistence cadence split — why `Zed.run()` calls `grab
 
 **Constraint:** On `/start`, `_start()` opens the camera and enables tracking, but `_next_capture_time` stays `None` (no persistence). The actor advances the tracker every loop and begins persisting only once `get_position()` returns `POSITIONAL_TRACKING_STATE.OK` for `STABILIZE_REQUIRED_OK_FRAMES` consecutive grabs, or `STABILIZE_BACKSTOP_SECONDS` elapses. `state()` exposes `tracking_state` and a `stabilizing` flag (capture active, not yet persisting) through `/status`; the phone shows a "hold still and level" banner while `stabilizing` is true and disables Stop until it clears.
 
-**Consequences:** The first persisted `frames.csv` row comes from an `OK` tracker, not `SEARCHING`. The SVO recording still spans the warm-up window — it is enabled in `_start` and not gated — but nothing downstream consumes it. A capture cancelled during warm-up persists zero frames and never reaches `/stop`, so no tar is built and `get_capture_sessions` does not enumerate the orphan; the placeholder meta lingers on disk until the operator deletes it.
+**Consequences:** The first persisted `frames.csv` row comes from an `OK` tracker, not `SEARCHING`. The SVO recording still spans the warm-up window — it is enabled in `_start` and not gated — but nothing downstream consumes it. A capture cancelled during warm-up persists zero frames and never reaches `/stop`, so no tar is built and `get_capture_sessions` does not enumerate the orphan; the placeholder meta lingers on disk until the operator deletes it. A start that fails inside `_start()` rolls back via `_teardown_partial_start`: the partially-opened camera is closed and the empty session directory removed, so a failed start leaves no open camera handle behind.
 
 ### Run with `DEPTH_MODE.NONE`, `depth_stabilization = 0`, and `POSITIONAL_TRACKING_MODE.GEN_3`
 

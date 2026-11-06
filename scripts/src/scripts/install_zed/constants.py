@@ -1,24 +1,24 @@
 import hashlib
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 
 @dataclass(frozen=True)
 class ZedService:
-    # Image base name and workloads/images.yml target — the same string by
+    # Image base name and derived bake target — the same string by
     # construction.
     name: str
     # Env var compose.rig.yml uses to override the image (`${X:-default}`). Asymmetric
     # with name (`zed-capture` → `ZED_IMAGE`, not `ZED_CAPTURE_IMAGE`), so listed explicitly.
     image_env: str
-    # Key into the dict returned by `compute_service_shas`.
+    # Env var name carrying the service's tree tag.
     sha_key: str
 
 
 @dataclass(frozen=True)
 class StockImage:
-    # Key into workloads/images.lock carrying the full pinned reference
-    # (`path:tag@sha256:…`), pullable and compose-resolvable as-is.
+    # Key into boatyard.lock.yml carrying the arm64 manifest reference.
     image_env: str
 
 
@@ -32,7 +32,7 @@ ZED_SERVICES: tuple[ZedService, ...] = (
 )
 
 # Observability stock images consumed straight from the org mirror,
-# full per-arch arm64 refs from workloads/images.lock — never built locally,
+# full per-arch arm64 refs from boatyard.lock.yml — never built locally,
 # pulled on the host and shipped to the box in both install modes.
 ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
     StockImage("LOKI_IMAGE"),
@@ -45,26 +45,31 @@ ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
 STOCK_IMAGE_SHIP_TAG = "placeframe-ship"
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-BAKE_FILE = REPO_ROOT / "workloads" / "images.yml"
 COMPOSE_SOURCE = REPO_ROOT / "compose.rig.yml"
 SYSTEMD_UNIT_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "placeframe-zed.service"
 WAIT_FOR_ZED_CAMERA_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "wait_for_zed_camera.py"
 LOKI_BOX_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "box.yaml"
 ALLOY_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "config.alloy"
-ENV_LOCK_FILE = REPO_ROOT / "workloads" / "images.lock"
+LOCK_FILE = REPO_ROOT / "boatyard.lock.yml"
+# uv run sets VIRTUAL_ENV but does not add .venv/bin to PATH, so the
+# boatyard console script is not findable in a subprocess.
+BOATYARD_BIN = str(Path(sys.executable).parent / "boatyard")
 REMOTE_DIR = "~/.placeframe"
 REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
 REMOTE_LOKI_CONFIG = f"{REMOTE_DIR}/box.yaml"
 REMOTE_ALLOY_CONFIG = f"{REMOTE_DIR}/config.alloy"
 # Shared exec line for the offline camera-open assertion and the pre-seed
-# serial probe: pyzed's open() returns an error code instead of raising, so
-# the exit status is the assertion and the SDK's stderr diagnostics ride
-# along with the failure.
+# serial probe. Runs the service's own probe module (src/open_camera_probe.py)
+# in the container, opening with the capture actor's exact InitParameters via
+# build_init_parameters() — the assertion exercises the real open path, and
+# the depth-model optimization the service's depth mode needs lands here at
+# install time instead of stalling the first field start by minutes. pyzed's
+# open() returns an error code instead of raising, so the module's exit status
+# is the assertion and the SDK's stderr diagnostics (GMSL init banner
+# included) ride along with the failure.
 CAMERA_OPEN_PROBE = (
-    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
-    '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); '
-    'e = c.open(p); c.close(); raise SystemExit(0 if e == sl.ERROR_CODE.SUCCESS else 1)"'
+    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture uv run --no-sync python -m src.open_camera_probe"
 )
 # Box-side source of the compose bind mount into the container's
 # /usr/local/zed/settings — where the seeded per-camera calibration lives.
