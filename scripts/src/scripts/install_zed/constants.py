@@ -1,4 +1,5 @@
 import hashlib
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -50,6 +51,9 @@ WAIT_FOR_ZED_CAMERA_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "wait_for
 LOKI_BOX_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "box.yaml"
 ALLOY_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "config.alloy"
 LOCK_FILE = REPO_ROOT / "boatyard.lock.yml"
+# uv run sets VIRTUAL_ENV but does not add .venv/bin to PATH, so the
+# boatyard console script is not findable in a subprocess.
+BOATYARD_BIN = str(Path(sys.executable).parent / "boatyard")
 REMOTE_DIR = "~/.placeframe"
 REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"

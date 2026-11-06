@@ -8,6 +8,7 @@ from placeframe_common.logging_config import configure_logging
 
 from .box_install import install_box
 from .constants import (
+    BOATYARD_BIN,
     BOX_SSH_TARGET,
     LOCK_FILE,
     REPO_ROOT,
@@ -32,7 +33,7 @@ def main(
     configure_logging("install-zed", log_file_path=REPO_ROOT / ".placeframe" / "logs" / "install-zed.jsonl")
     logger.info("starting_install", extra={"target": BOX_SSH_TARGET, "build": build})
     service_names = [service.name for service in ZED_SERVICES]
-    tree_tags = bash_output(f"boatyard tree-tags {' '.join(service_names)}").strip().splitlines()
+    tree_tags = bash_output(f"{BOATYARD_BIN} tree-tags {' '.join(service_names)}").strip().splitlines()
     service_shas = {service.sha_key: tag for service, tag in zip(ZED_SERVICES, tree_tags)}
     lock = yaml.safe_load(LOCK_FILE.read_text(encoding="utf-8"))
     lock_entries = {

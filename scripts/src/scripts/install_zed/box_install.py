@@ -21,6 +21,7 @@ from .constants import (
     APPLIANCE_SYSTEM_UNITS_TO_MASK,
     APPLIANCE_USER_UNITS_TO_MASK,
     ALLOY_CONFIG_SOURCE,
+    BOATYARD_BIN,
     BOX_IP,
     BOX_REACHABLE_PROBE_SECONDS,
     BOX_SSH_TARGET,
@@ -481,7 +482,7 @@ def _acquire_images(
         # Cross-compile: the config declares arm64-only, so the host-arch
         # default target selection would refuse on an amd64 build host.
         target_flags = " ".join(f"--targets {service.name}" for service in ZED_SERVICES)
-        bash(f"boatyard build --push-to localhost:{REGISTRY_PORT} {target_flags}")
+        bash(f"{BOATYARD_BIN} build --push-to localhost:{REGISTRY_PORT} {target_flags}")
 
         # Docker treats `localhost` as insecure-by-default for push; the box's
         # daemon needs the box-facing host IP in its insecure-registries. The
