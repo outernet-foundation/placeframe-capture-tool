@@ -10,6 +10,6 @@ permissions:
 jobs:
   cleanup-pr-releases:
     if: github.event.pull_request.merged == false
-    uses: outernet-foundation/github-actions-toolkit/.github/workflows/cleanup-pr-releases.yml@4aa3a68c350591d105f118f7527c2b12b13b7de0
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/cleanup-pr-releases.yml@f2d576acbceeca8afb324152aad8e4928d5a769b
     with:
       pr-number: ${{ github.event.pull_request.number }}

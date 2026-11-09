@@ -1,0 +1,7 @@
+apiVersion: score.dev/v1b1
+metadata:
+  name: zed-capture
+  annotations:
+    outernet.internal/dockerfile: zed-capture=workloads/zed-capture/Dockerfile
+containers:
+  zed-capture: {}
