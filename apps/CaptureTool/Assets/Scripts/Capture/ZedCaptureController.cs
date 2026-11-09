@@ -301,10 +301,12 @@ public static class ZedCaptureController
                 : ZedStatusKind.Unreachable;
         }
 
-        if (consecutiveFailures > 0)
-            return;
+                if (consecutiveFailures > 0)
+                    return;
 
-        if (response.CurrentCaptureId.HasValue)
+                App.state.zedErrorDetail.value = response.LastException ?? "";
+
+                if (response.CurrentCaptureId.HasValue)
         {
             App.state.zedStatus.value = response.Stabilizing
                 ? ZedStatusKind.Stabilizing

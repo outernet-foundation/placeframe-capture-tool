@@ -1,0 +1,7 @@
+apiVersion: score.dev/v1b1
+metadata:
+  name: aoa-bridge
+  annotations:
+    outernet.internal/dockerfile: aoa-bridge=workloads/aoa-bridge/Dockerfile
+containers:
+  aoa-bridge: {}

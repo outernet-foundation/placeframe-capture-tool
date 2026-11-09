@@ -78,6 +78,23 @@ wheels = [
 ]
 
 [[package]]
+name = "boatyard"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bashrun" },
+    { name = "build-artifact-registry" },
+    { name = "packaging" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "typer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2c/90/1a3fd8aa2893311f23d3c1a4dcaf8a152c896433d167cf29ef0c06e59f1a/boatyard-0.7.1.tar.gz", hash = "sha256:e36dd593139816e2cdc2c2c9443fb856cad4ad3ec1d3e1e0d303027e44b6f910", size = 195310, upload-time = "2026-11-09T19:30:18.985Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ce/d3/f4735af75a8b9436658d4c9d9c1c1c009f370bac8bd483bd2fcdce5c1e69/boatyard-0.7.1-py3-none-any.whl", hash = "sha256:dd5010c7f3fd124f7fb8ccd02a8e02ae53f435ec265e029c8eeb0ad7c350bc08", size = 73306, upload-time = "2026-11-09T19:30:17.478Z" },
+]
+
+[[package]]
 name = "boto3"
 version = "1.43.100"
 source = { registry = "https://pypi.org/simple" }
@@ -107,16 +124,16 @@ wheels = [
 
 [[package]]
 name = "build-artifact-registry"
-version = "0.2.1"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bashrun" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/ec/1fb764cf36ae907eed7a124d6785ce17a41a891799e7cead6c6dfd60c185/build_artifact_registry-0.2.1.tar.gz", hash = "sha256:7688178f97e761dca049ec5b612b41f22abb4728c3877a926470970192964b34", size = 38123, upload-time = "2026-10-11T22:07:28.452Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/5f/c976fa05bab9e534c771cc8d847f7c86c58d75f18b2f8559cc9f70e4cf54/build_artifact_registry-0.2.2.tar.gz", hash = "sha256:1ffcc011e41629b74f1d470e7db3c435d161b5d03753f6ca2f1820802e8a870a", size = 38707, upload-time = "2026-10-15T22:18:28.164Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/52/cd/702dac4c5efcd36e5134f1ffd8ba1abb99999f5763308015a56d3ca0d488/build_artifact_registry-0.2.1-py3-none-any.whl", hash = "sha256:d7543f4bfba68ac7b311add8605626c80252abcb389661d120dd554155cf7faf", size = 10568, upload-time = "2026-10-11T22:07:27.671Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/8f/acdc636d3a30b1ba1f045c1b04cd7d187097bdc38d0b625c98c6e68927aa/build_artifact_registry-0.2.2-py3-none-any.whl", hash = "sha256:a8c59694268b2d9a8e6303d43d494d18a83e1ddbba23b18ca4bb245477b12138", size = 10811, upload-time = "2026-10-15T22:18:27.174Z" },
 ]
 
 [[package]]
@@ -144,25 +161,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d8/53/6f443c9a4a8358a93a6792e2acffb9d9d5cb0a5cfd8802644b7b1c9a02e4/colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44", size = 27697, upload-time = "2022-10-25T02:36:22.414Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/d6/3965ed04c63042e047cb6a3e6ed1a63a35087b6a609aa3a15ed8ac56c221/colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6", size = 25335, upload-time = "2022-10-25T02:36:20.889Z" },
-]
-
-[[package]]
-name = "docker-devkit"
-version = "0.4.8"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "bashrun" },
-    { name = "build-artifact-registry" },
-    { name = "packaging" },
-    { name = "pathspec" },
-    { name = "pydantic" },
-    { name = "pyyaml" },
-    { name = "strictyaml" },
-    { name = "typer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/da/fa/48e6ee07603730c9883b03a09904a869c2ee476411a623ed08bf7175d35c/docker_devkit-0.4.8.tar.gz", hash = "sha256:0f994aa96bd3e638318b88a2cba306a853b046e0dde90f883ede95ff3df46837", size = 85949, upload-time = "2026-10-21T21:27:24.083Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/8e/3c266f5a8994b97b93aa785ff71c0d53445331e51c79fb5b47f71f22f68b/docker_devkit-0.4.8-py3-none-any.whl", hash = "sha256:82b578bb9e91a37f95575b2e8818b03859b6477bb60767a7905283f99f3a70b4", size = 32848, upload-time = "2026-10-21T21:27:23.029Z" },
 ]
 
 [[package]]
@@ -622,15 +620,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pathspec"
-version = "1.1.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6fd36efb827202a2d997a375e160a71eb2888a925aac1/pathspec-1.1.1.tar.gz", hash = "sha256:17db5ecd524104a120e173814c90367a96a98d07c45b2e10c2f3919fff91bf5a", size = 135180, upload-time = "2026-04-27T01:46:08.907Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", size = 57328, upload-time = "2026-04-27T01:46:07.06Z" },
-]
-
-[[package]]
 name = "pillow"
 version = "12.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -659,7 +648,7 @@ source = { virtual = "." }
 dev = [
     { name = "basedpyright" },
     { name = "bashrun" },
-    { name = "docker-devkit" },
+    { name = "boatyard" },
     { name = "openapi-client-codegen" },
     { name = "pytest" },
     { name = "python-devkit" },
@@ -674,7 +663,7 @@ dev = [
 dev = [
     { name = "basedpyright", specifier = ">=1.39.10,<1.40" },
     { name = "bashrun", specifier = ">=0.8" },
-    { name = "docker-devkit", specifier = ">=0.4" },
+    { name = "boatyard", specifier = ">=0.7.1" },
     { name = "openapi-client-codegen", specifier = ">=0.3" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "python-devkit", specifier = ">=0.3" },
@@ -999,16 +988,18 @@ version = "0.1.0"
 source = { editable = "scripts" }
 dependencies = [
     { name = "bashrun" },
-    { name = "docker-devkit" },
+    { name = "boatyard" },
     { name = "placeframe-common" },
+    { name = "pyyaml" },
     { name = "typer" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "bashrun", specifier = ">=0.1.0" },
-    { name = "docker-devkit", specifier = ">=0.1.15" },
+    { name = "boatyard", specifier = ">=0.7.1" },
     { name = "placeframe-common", specifier = "==2.0.0.dev1340" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "typer", specifier = ">=0.15" },
 ]
 

@@ -1,25 +1,40 @@
 import hashlib
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 
 @dataclass(frozen=True)
 class ZedService:
-    # Image base name and workloads/images.yml target — the same string by
+    # Image base name and derived bake target — the same string by
     # construction.
     name: str
     # Env var compose.rig.yml uses to override the image (`${X:-default}`). Asymmetric
     # with name (`zed-capture` → `ZED_IMAGE`, not `ZED_CAPTURE_IMAGE`), so listed explicitly.
     image_env: str
-    # Key into the dict returned by `compute_service_shas`.
+    # Env var name carrying the service's tree tag.
     sha_key: str
 
 
 @dataclass(frozen=True)
 class StockImage:
-    # Key into workloads/images.lock carrying the full pinned reference
-    # (`path:tag@sha256:…`), pullable and compose-resolvable as-is.
+    # Key into boatyard.lock.yml carrying the arm64 manifest reference.
     image_env: str
+
+
+@dataclass(frozen=True)
+class SdkModel:
+    # URL the SDK downloads the model from on first use.
+    url: str
+    # Name the SDK stores it under in ZED_RESOURCES_DIR (the URL's last
+    # segment is not always the stored name — the tracking model's URL says
+    # positional_tracking_2_2, the file is positional_tracking_2.2.model).
+    filename: str
+    # Size and sha256 pin the model to the SDK version: the ZED_BASE_IMAGE
+    # digest in boatyard.lock.yml locks the SDK, and the SDK expects exactly
+    # these bytes for it.
+    size: int
+    sha256: str
 
 
 # Every first-party image the box runs is cross-built (arm64) by
@@ -32,7 +47,7 @@ ZED_SERVICES: tuple[ZedService, ...] = (
 )
 
 # Observability stock images consumed straight from the org mirror,
-# full per-arch arm64 refs from workloads/images.lock — never built locally,
+# full per-arch arm64 refs from boatyard.lock.yml — never built locally,
 # pulled on the host and shipped to the box in both install modes.
 ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
     StockImage("LOKI_IMAGE"),
@@ -45,33 +60,74 @@ ZED_STOCK_IMAGES: tuple[StockImage, ...] = (
 STOCK_IMAGE_SHIP_TAG = "placeframe-ship"
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-BAKE_FILE = REPO_ROOT / "workloads" / "images.yml"
 COMPOSE_SOURCE = REPO_ROOT / "compose.rig.yml"
 SYSTEMD_UNIT_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "placeframe-zed.service"
 WAIT_FOR_ZED_CAMERA_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "wait_for_zed_camera.py"
 LOKI_BOX_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "box.yaml"
 ALLOY_CONFIG_SOURCE = REPO_ROOT / "workloads" / "zed-capture" / "config.alloy"
-ENV_LOCK_FILE = REPO_ROOT / "workloads" / "images.lock"
+LOCK_FILE = REPO_ROOT / "boatyard.lock.yml"
+# uv run sets VIRTUAL_ENV but does not add .venv/bin to PATH, so the
+# boatyard console script is not findable in a subprocess.
+BOATYARD_BIN = str(Path(sys.executable).parent / "boatyard")
 REMOTE_DIR = "~/.placeframe"
 REMOTE_COMPOSE = f"{REMOTE_DIR}/compose.rig.yml"
 REMOTE_WAIT_FOR_ZED_CAMERA = f"{REMOTE_DIR}/wait_for_zed_camera.py"
 REMOTE_LOKI_CONFIG = f"{REMOTE_DIR}/box.yaml"
 REMOTE_ALLOY_CONFIG = f"{REMOTE_DIR}/config.alloy"
 # Shared exec line for the offline camera-open assertion and the pre-seed
-# serial probe: pyzed's open() returns an error code instead of raising, so
-# the exit status is the assertion and the SDK's stderr diagnostics ride
-# along with the failure.
+# serial probe. Runs the service's own probe module (src/open_camera_probe.py)
+# in the container, opening with the capture actor's exact InitParameters via
+# build_init_parameters() and enabling positional tracking with the actor's
+# exact PositionalTrackingParameters via build_positional_tracking_parameters()
+# — the assertion exercises the real open path, the depth-model optimization
+# the service's depth mode needs lands here at install time instead of
+# stalling the first field start by minutes, and a missing tracker model
+# fails the install rather than the first field start. pyzed's open() and
+# enable_positional_tracking() return error codes instead of raising, so the
+# module's exit status is the assertion and the SDK's stderr diagnostics
+# (GMSL init banner included) ride along with the failure.
 CAMERA_OPEN_PROBE = (
-    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture python -c "
-    '"import pyzed.sl as sl; c = sl.Camera(); p = sl.InitParameters(); '
-    'e = c.open(p); c.close(); raise SystemExit(0 if e == sl.ERROR_CODE.SUCCESS else 1)"'
+    f"sudo docker compose -f {REMOTE_COMPOSE} exec zed-capture uv run --no-sync python -m src.open_camera_probe"
 )
 # Box-side source of the compose bind mount into the container's
 # /usr/local/zed/settings — where the seeded per-camera calibration lives.
 ZED_SETTINGS_DIR = "/usr/local/zed/settings"
-# Stereolabs' factory-calibration service; the only artifact install-zed
-# ever fetches from stereolabs.com, fetched once on the host at seed time.
+# Stereolabs' factory-calibration service; the calibration conf is one of
+# the artifacts install-zed fetches from stereolabs.com on the host at seed
+# time (the SDK models below are the others).
 CALIBRATION_DOWNLOAD_URL = "https://calib.stereolabs.com/?SN={serial}"
+# Box-side source of the compose bind mount into the container's
+# /usr/local/zed/resources — where the seeded SDK model files live.
+ZED_RESOURCES_DIR = "/usr/local/zed/resources"
+# The Stereolabs runtime base image ships an empty resources dir: every model
+# is download-on-demand at first use, and the box is offline forever — so
+# install-zed seeds the models the service's open+track path needs, exactly
+# like the camera calibration. The set is the union of what one open with
+# build_init_parameters() + enable_positional_tracking() fetches on a fresh
+# machine: the NEURAL_LIGHT depth model (the SDK first tries to download a
+# prebuilt TensorRT engine, which 403s on this GPU class, then falls back to
+# the model and builds the engine on-device at the install-time probe) and
+# the positional-tracking model (GEN_2 and GEN_3 both load it). Engines and
+# the timing cache are derived on-box, never seeded.
+#
+# A ZED_BASE_IMAGE relock to a different SDK version must re-derive every
+# entry: run the new SDK once with downloads enabled and observe what it
+# fetches (the URLs appear in the proxy log when routed through one; the
+# fetched files land in /usr/local/zed/resources).
+SDK_MODELS: tuple[SdkModel, ...] = (
+    SdkModel(
+        url="http://download.stereolabs.com/ai/model/neural_depth_light_5.2.model",
+        filename="neural_depth_light_5.2.model",
+        size=8_636_419,
+        sha256="d1194189d0db31632406e7d34474852335c7102ba4ff46854597dfc9c923163f",
+    ),
+    SdkModel(
+        url="http://download.stereolabs.com/tracking_model/positional_tracking_2_2",
+        filename="positional_tracking_2.2.model",
+        size=33_279_104,
+        sha256="21ff75426ea1d66bc52b6cd978eef4c30153d9afc0c1f8fa6fcd001448f80554",
+    ),
+)
 # All installer ssh state is repo-scoped under the gitignored .placeframe/:
 # the deploy key and known_hosts live here, logs beside them. Nothing in
 # ~/.ssh is ever read or written — a fresh clone bootstraps itself, and the

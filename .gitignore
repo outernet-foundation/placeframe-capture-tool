@@ -18,9 +18,11 @@
 .vs
 .act
 .env
+boatyard.values.yaml
 .secrets
 tidy-commits.json
 .build-version.json
+metadata.json
 artifacts/
 .pnpm-store/
 .placeframe/

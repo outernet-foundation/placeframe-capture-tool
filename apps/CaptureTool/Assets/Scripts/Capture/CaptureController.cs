@@ -236,37 +236,57 @@ namespace Placeframe.Client
         private static async UniTask StartCaptureForCurrentDevice()
         {
             var deviceType = App.state.captureMode.value;
-            switch (deviceType)
+            try
             {
-                case DeviceType.ARFoundation:
-                    CaptureManager.StartCapture(captureIntervalSeconds);
-                    break;
-                case DeviceType.Zed:
-                    await ZedCaptureController.StartCapture(captureIntervalSeconds);
-                    break;
-                default:
-                    throw new ArgumentException($"Unknown DeviceType {deviceType}");
+                switch (deviceType)
+                {
+                    case DeviceType.ARFoundation:
+                        CaptureManager.StartCapture(captureIntervalSeconds);
+                        break;
+                    case DeviceType.Zed:
+                        await ZedCaptureController.StartCapture(captureIntervalSeconds);
+                        break;
+                    default:
+                        throw new ArgumentException($"Unknown DeviceType {deviceType}");
+                }
+                App.state.captureStatus.value = CaptureStatus.Capturing;
             }
-            App.state.captureStatus.value = CaptureStatus.Capturing;
+            catch (Exception exception)
+            {
+                Log.Error(LogGroup.Capture, exception, "StartCapture failed; returning to Idle");
+                App.state.captureStatus.value = CaptureStatus.Idle;
+            }
         }
 
         private static async UniTask StopCaptureForCurrentDevice(string name)
         {
             var deviceType = App.state.captureMode.value;
-            switch (deviceType)
+            try
             {
-                case DeviceType.ARFoundation:
-                    var arId = CaptureManager.StopCapture();
-                    _localCaptureNames[arId] = name;
-                    SaveLocalCaptureNames();
-                    break;
-                case DeviceType.Zed:
-                    await ZedCaptureController.StopCapture(name);
-                    break;
-                default:
-                    throw new ArgumentException($"Unknown DeviceType {deviceType}");
+                switch (deviceType)
+                {
+                    case DeviceType.ARFoundation:
+                        var arId = CaptureManager.StopCapture();
+                        _localCaptureNames[arId] = name;
+                        SaveLocalCaptureNames();
+                        break;
+                    case DeviceType.Zed:
+                        await ZedCaptureController.StopCapture(name);
+                        break;
+                    default:
+                        throw new ArgumentException($"Unknown DeviceType {deviceType}");
+                }
+                App.state.captureStatus.value = CaptureStatus.Idle;
             }
-            App.state.captureStatus.value = CaptureStatus.Idle;
+            catch (Exception exception)
+            {
+                Log.Error(LogGroup.Capture, exception, "StopCapture failed");
+                // A failed stop most likely means the capture is still running; return to
+                // Capturing so the operator can retry. If the box already has no active
+                // capture, fall back to Idle so the UI doesn't wedge.
+                var stillRunning = deviceType == DeviceType.Zed && App.state.zedStatus.value == ZedStatusKind.Recording;
+                App.state.captureStatus.value = stillRunning ? CaptureStatus.Capturing : CaptureStatus.Idle;
+            }
         }
 
         private static void OnCaptureNameChanged(CaptureState capture, string name)

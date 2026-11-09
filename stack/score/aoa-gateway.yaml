@@ -1,0 +1,7 @@
+apiVersion: score.dev/v1b1
+metadata:
+  name: aoa-gateway
+  annotations:
+    outernet.internal/dockerfile: aoa-gateway=workloads/aoa-gateway/Dockerfile
+containers:
+  aoa-gateway: {}

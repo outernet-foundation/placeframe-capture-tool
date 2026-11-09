@@ -1,0 +1,14 @@
+services:
+  zed-capture-zed-capture:
+    image: ghcr.io/outernet-foundation/placeframe-capture-tool/zed-capture:${ZED_CAPTURE__BOATYARD_TREE__ZED_CAPTURE_SHA}
+    networks:
+      zed-capture-net:
+        aliases:
+        - zed-capture
+    annotations:
+      compose.score.dev/workload-name: zed-capture
+      outernet.internal/dockerfile: zed-capture=workloads/zed-capture/Dockerfile
+    hostname: zed-capture
+networks:
+  zed-capture-net: {}
+name: placeframe-capture-tool

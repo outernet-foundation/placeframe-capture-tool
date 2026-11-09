@@ -1,6 +1,6 @@
-ARG CADDY_IMAGE
+ARG AOA_GATEWAY_IMAGE
 
-FROM ${CADDY_IMAGE}
+FROM ${AOA_GATEWAY_IMAGE}
 
 COPY workloads/aoa-gateway/Caddyfile /etc/caddy/Caddyfile
 

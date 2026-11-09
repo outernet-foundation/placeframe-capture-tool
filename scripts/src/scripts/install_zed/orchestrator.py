@@ -2,20 +2,21 @@ from logging import getLogger
 from typing import Annotated
 
 import typer
+import yaml
 from bashrun.bash import bash_output
-from docker_devkit.documents import compute_service_shas, parse_bake
-from docker_devkit.lifecycle import parse_env_file
 from placeframe_common.logging_config import configure_logging
 
 from .box_install import install_box
 from .constants import (
-    BAKE_FILE,
+    BOATYARD_BIN,
     BOX_SSH_TARGET,
-    ENV_LOCK_FILE,
+    LOCK_FILE,
     REPO_ROOT,
     SSH_KEY,
     SSH_KNOWN_HOSTS,
     SSH_STATE_DIR,
+    ZED_SERVICES,
+    ZED_STOCK_IMAGES,
 )
 
 logger = getLogger(__name__)
@@ -31,8 +32,13 @@ def main(
 ) -> None:
     configure_logging("install-zed", log_file_path=REPO_ROOT / ".placeframe" / "logs" / "install-zed.jsonl")
     logger.info("starting_install", extra={"target": BOX_SSH_TARGET, "build": build})
-    service_shas = compute_service_shas(REPO_ROOT, parse_bake(BAKE_FILE))
-    env_lock = parse_env_file(ENV_LOCK_FILE)
+    service_names = [service.name for service in ZED_SERVICES]
+    tree_tags = bash_output(f"{BOATYARD_BIN} tree-tags {' '.join(service_names)}").strip().splitlines()
+    service_shas = {service.sha_key: tag for service, tag in zip(ZED_SERVICES, tree_tags)}
+    lock = yaml.safe_load(LOCK_FILE.read_text(encoding="utf-8"))
+    lock_entries = {
+        image.image_env: lock["images"][image.image_env]["platforms"]["linux/arm64"] for image in ZED_STOCK_IMAGES
+    }
 
     SSH_STATE_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
     SSH_KNOWN_HOSTS.touch(exist_ok=True)
@@ -40,4 +46,4 @@ def main(
         logger.info("generating_ssh_key", extra={"path": str(SSH_KEY)})
         bash_output(f'ssh-keygen -t ed25519 -N "" -f {SSH_KEY}')
 
-    install_box(build, service_shas, env_lock)
+    install_box(build, service_shas, lock_entries)
