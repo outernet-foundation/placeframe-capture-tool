@@ -32,6 +32,20 @@ calib.stereolabs.com returned a placeholder (all-zero) calibration for SN
 {serial}: the serial does not match a manufactured camera. Check it against
 the camera's label and re-run install-zed."""
 
+SDK_MODEL_STALE = """\
+The SDK model {filename} at {path} has sha256 {actual}, but this installer
+pins {expected} for the SDK version boatyard.lock.yml locks. Either the file
+is corrupt, or the ZED_BASE_IMAGE digest was relocked to a different SDK
+without updating SDK_MODELS in scripts/src/scripts/install_zed/constants.py —
+re-derive the pin (run the new SDK once with downloads enabled and observe
+what it fetches) and re-run install-zed."""
+
+SDK_MODEL_FETCH_INVALID = """\
+The SDK model {filename} downloaded from {url} does not match its pin (sha256
+or size) — the server may have served an error page. Re-run install-zed; if
+it persists, re-derive the pin alongside any SDK version change as described
+in constants.py's SDK_MODELS block."""
+
 BOX_LOGIN_PROMPT = "box login password (installs the install-zed SSH key and the passwordless sudo rule)"
 
 FACTORY_LOGIN_REJECTED = "Factory password rejected — the next prompt takes this box's current `user` password."

@@ -1,4 +1,5 @@
 import configparser
+import hashlib
 import json
 import platform
 import re
@@ -21,7 +22,7 @@ from .constants import (
     APPLIANCE_SYSTEM_UNITS_TO_MASK,
     APPLIANCE_USER_UNITS_TO_MASK,
     ALLOY_CONFIG_SOURCE,
-    BAKE_FILE,
+    BOATYARD_BIN,
     BOX_IP,
     BOX_REACHABLE_PROBE_SECONDS,
     BOX_SSH_TARGET,
@@ -48,8 +49,11 @@ from .constants import (
     SSH_TRUST,
     STOCK_IMAGE_SHIP_TAG,
     SUDOERS_RULE,
+    SDK_MODELS,
     SYSTEMD_UNIT_SOURCE,
+    SdkModel,
     WAIT_FOR_ZED_CAMERA_SOURCE,
+    ZED_RESOURCES_DIR,
     ZED_SERVICES,
     ZED_SETTINGS_DIR,
     ZED_STOCK_IMAGES,
@@ -65,6 +69,8 @@ from .messages import (
     CAMERA_SERIAL_UNREADABLE,
     FACTORY_LOGIN_REJECTED,
     IMAGE_UNRESOLVED_ON_BOX,
+    SDK_MODEL_FETCH_INVALID,
+    SDK_MODEL_STALE,
 )
 from .ssh import ssh_check, ssh_output, ssh_quiet, ssh_run
 
@@ -76,7 +82,7 @@ logger = getLogger(__name__)
 FACTORY_LOGIN = "admin"
 
 
-def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, str]) -> None:
+def install_box(build: bool, service_shas: dict[str, str], lock_entries: dict[str, str]) -> None:
     # Fail before touching the box if the host can't actually cross-build the
     # arm64 images — otherwise the missing prerequisite only surfaces as an
     # opaque `exec format error` mid-build, after the box has been reconfigured.
@@ -164,7 +170,7 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # (default), or cross-compile via the local registry (--build). The
         # stock observability images are never built locally — digest-pinned
         # mirror pulls shipped from the host in both modes.
-        images = _acquire_images(host_ip, build, service_shas, env_lock)
+        images = _acquire_images(host_ip, build, service_shas, lock_entries)
 
         # Ship the compose file and supporting scripts. The aoa-alloy /
         # aoa-loki configs ship as files beside the compose file and mount
@@ -189,7 +195,7 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # RepoDigest instead of restoring the registry one, so a digest ref
         # cannot resolve on the box — the pin governs the host pull.
         box_shas = {service.sha_key: service_shas[service.sha_key] for service in ZED_SERVICES}
-        stock_images = {image.image_env: env_lock[image.image_env] for image in ZED_STOCK_IMAGES}
+        stock_images = {image.image_env: lock_entries[image.image_env] for image in ZED_STOCK_IMAGES}
         stock_ship_tags = {key: _ship_tag(value) for key, value in stock_images.items()}
         env_lines = "".join(f"{key}={value}\n" for key, value in {**images, **box_shas, **stock_ship_tags}.items())
         ssh_quiet(f"tee {REMOTE_DIR}/.env", stdin_text=env_lines + f"ZED_BOX_ID={box_id}\n")
@@ -227,6 +233,10 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
         # running container without a recreate.
         _seed_camera_calibration()
 
+        # Seed the SDK's download-on-demand models the same way, before the
+        # closing assertion opens with NEURAL_LIGHT and enables tracking.
+        _seed_sdk_models()
+
         # Tripwire: nothing in install-zed adds a default route, and the
         # camera-open assertion below only proves the offline posture if the
         # box actually is offline.
@@ -234,8 +244,9 @@ def install_box(build: bool, service_shas: dict[str, str], env_lock: dict[str, s
             _abort(BOX_HAS_DEFAULT_ROUTE)
 
         # Offline camera-open assertion. With the seeded calibration, the
-        # baked .isp profiles, and ZED_SDK_DISABLE_DOWNLOAD there is no
-        # download path left, so a successful open proves the offline posture
+        # seeded tracker model, the baked .isp profiles, and
+        # ZED_SDK_DISABLE_DOWNLOAD there is no download path left, so a
+        # successful open + tracking enable proves the offline posture
         # end-to-end. Failure is fatal — the propagated SDK error is the
         # diagnostic — rather than deferring a broken rig to first capture.
         logger.info("verifying_offline_camera_open")
@@ -443,13 +454,22 @@ def _ensure_arm64_emulation() -> None:
     if handler.exists() and handler.read_text().startswith("enabled"):
         return
 
+    # binfmt_misc visibility is mount-scoped: a sandbox can sit on a kernel
+    # whose host-side docker daemon has qemu-aarch64 registered while the
+    # sandbox's own registry (or lack of a mount) shows nothing. The daemon
+    # is what actually executes the build's arm64 stages, so probe it
+    # directly before declaring the prerequisite missing — a 3MB arm64
+    # true-exit is the cheapest honest capability check.
+    if bash_check("docker run --rm --platform linux/arm64 alpine:3.20 true"):
+        return
+
     _abort(ARM64_EMULATION_MISSING)
 
 
 def _acquire_images(
-    host_ip: str, build: bool, service_shas: dict[str, str], env_lock: dict[str, str]
+    host_ip: str, build: bool, service_shas: dict[str, str], lock_entries: dict[str, str]
 ) -> dict[str, str]:
-    stock_references = [env_lock[image.image_env] for image in ZED_STOCK_IMAGES]
+    stock_references = [lock_entries[image.image_env] for image in ZED_STOCK_IMAGES]
 
     if not build:
         images = {
@@ -473,26 +493,16 @@ def _acquire_images(
             logger.info("restarting_local_registry")
             bash_output("docker start registry")
 
-        local_images = {
-            service.name: f"localhost:{REGISTRY_PORT}/{service.name}:{service_shas[service.sha_key]}"
-            for service in ZED_SERVICES
-        }
         remote_images = {
             service.image_env: f"{host_ip}:{REGISTRY_PORT}/{service.name}:{service_shas[service.sha_key]}"
             for service in ZED_SERVICES
         }
 
-        logger.info("cross_compiling_images", extra={"bake_file": str(BAKE_FILE)})
-        # Mirrors docker-devkit's build verb: the bake env carries the service
-        # SHAs plus the full images.lock — the Dockerfiles' base-image ARGs have
-        # no defaults, so a missing key is a hard bake error, not a fallback.
-        env_prefix = " ".join(f"{k}={v}" for k, v in {**service_shas, **env_lock}.items())
-        set_flags = " ".join(f"--set {service.name}.tags={local_images[service.name]}" for service in ZED_SERVICES)
-        bake_targets = " ".join(service.name for service in ZED_SERVICES)
-        bash(
-            f"env {env_prefix} docker buildx bake -f {BAKE_FILE} {set_flags}"
-            f" --push --provenance=false --sbom=false {bake_targets}",
-        )
+        logger.info("cross_compiling_images")
+        # Cross-compile: the config declares arm64-only, so the host-arch
+        # default target selection would refuse on an amd64 build host.
+        target_flags = " ".join(f"--targets {service.name}" for service in ZED_SERVICES)
+        bash(f"{BOATYARD_BIN} build --push-to localhost:{REGISTRY_PORT} {target_flags}")
 
         # Docker treats `localhost` as insecure-by-default for push; the box's
         # daemon needs the box-facing host IP in its insecure-registries. The
@@ -605,6 +615,55 @@ def _seed_camera_calibration() -> None:
     ssh_quiet(f"sudo install -D -m 0644 -o root -g root /tmp/SN{serial}.conf {ZED_SETTINGS_DIR}/SN{serial}.conf")
     ssh_quiet(f"rm /tmp/SN{serial}.conf")
     logger.info("camera_calibration_seeded", extra={"serial": serial})
+
+
+def _seed_sdk_models() -> None:
+    # One pass per SDK_MODELS entry — see constants.py for how the set is
+    # derived and re-derived.
+    for model in SDK_MODELS:
+        _seed_sdk_model(model)
+
+
+def _seed_sdk_model(model: SdkModel) -> None:
+    # The models are download-on-demand at first use, and the box is offline
+    # forever — same shape as the calibration seed. The sha256 check runs
+    # against the file already on the box (not just presence) because the
+    # models are SDK-version-coupled (the ZED_BASE_IMAGE digest in
+    # boatyard.lock.yml pins the SDK, the sha pins the models to it): a box
+    # re-flashed or an image re-pinned with a different SDK silently kept a
+    # stale model otherwise, and the failure would surface only at the
+    # closing assertion with an opaque SDK error. The resources bind is a
+    # directory mount, so a seeded file is visible to the running container
+    # without a recreate.
+    target = f"{ZED_RESOURCES_DIR}/{model.filename}"
+    if ssh_check(f"ls {target}"):
+        actual = ssh_output(f"sha256sum {target}").split()[0]
+        if actual == model.sha256:
+            logger.info("sdk_model_already_seeded", extra={"model": model.filename})
+            return
+        _abort(SDK_MODEL_STALE.format(filename=model.filename, path=target, actual=actual, expected=model.sha256))
+
+    with tempfile.TemporaryDirectory() as temp_directory:
+        model_path = Path(temp_directory) / model.filename
+        bash(f"curl -fsSL -o {model_path} {model.url}")
+
+        if not _sdk_model_is_pinned(model_path, model):
+            _abort(SDK_MODEL_FETCH_INVALID.format(filename=model.filename, url=model.url))
+
+        bash(f"scp {SSH_OPTIONS} {model_path} {BOX_SSH_TARGET}:/tmp/")
+
+    ssh_quiet(f"sudo install -D -m 0644 -o root -g root /tmp/{model.filename} {target}")
+    ssh_quiet(f"rm /tmp/{model.filename}")
+    logger.info("sdk_model_seeded", extra={"model": model.filename})
+
+
+def _sdk_model_is_pinned(model_path: Path, model: SdkModel) -> bool:
+    # Size first (cheap) then sha256 — a truncated or error-page download is
+    # caught by one of the two without hashing ambiguity.
+    if model_path.stat().st_size != model.size:
+        return False
+    digest = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    return digest == model.sha256
 
 
 def _calibration_is_real(calibration_path: Path) -> bool:
