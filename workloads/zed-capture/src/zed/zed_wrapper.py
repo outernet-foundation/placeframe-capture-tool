@@ -22,6 +22,39 @@ def set_from_svo_file(init: sl.InitParameters, path: str) -> None:
     init.set_from_svo_file(path)
 
 
+# The single source of the service's SDK open parameters. install-zed's
+# camera-open probe runs this same builder inside the container, so the
+# offline assertion exercises the real open path and the depth-model
+# optimization the service's depth mode needs happens at install time — a
+# fresh box or an SDK/depth-mode bump otherwise lands a multi-minute TensorRT
+# optimization on the first field start instead.
+def build_init_parameters() -> sl.InitParameters:
+    init = sl.InitParameters()
+    init.camera_resolution = sl.RESOLUTION.HD1080
+    init.coordinate_units = sl.UNIT.METER
+    # IMAGE is the OpenCV axis convention the manifest declares and the reconstructor assumes.
+    init.coordinate_system = sl.COORDINATE_SYSTEM.IMAGE
+    init.camera_fps = 30
+    init.enable_image_enhancement = True
+    init.sdk_verbose = True
+    init.depth_mode = sl.DEPTH_MODE.NEURAL_LIGHT
+    return init
+
+
+# The single source of the service's positional-tracking parameters, for the
+# same reason as build_init_parameters: install-zed's camera-open probe
+# enables tracking with these exact parameters, so a missing tracker model
+# (the SDK downloads positional_tracking_2.2.model on demand — the box is
+# offline and it is seeded at install) fails the install's closing assertion,
+# not the first field start.
+def build_positional_tracking_parameters() -> sl.PositionalTrackingParameters:
+    tracking = sl.PositionalTrackingParameters()
+    tracking.enable_imu_fusion = True
+    tracking.set_floor_as_origin = False
+    tracking.mode = sl.POSITIONAL_TRACKING_MODE.GEN_3
+    return tracking
+
+
 def open_camera(cam: sl.Camera, init: sl.InitParameters):
     error = cam.open(init)
     if error != sl.ERROR_CODE.SUCCESS:
