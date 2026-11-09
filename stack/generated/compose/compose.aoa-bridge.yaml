@@ -1,0 +1,14 @@
+services:
+  aoa-bridge-aoa-bridge:
+    image: ghcr.io/outernet-foundation/placeframe-capture-tool/aoa-bridge:${AOA_BRIDGE__BOATYARD_TREE__AOA_BRIDGE_SHA}
+    networks:
+      aoa-bridge-net:
+        aliases:
+        - aoa-bridge
+    annotations:
+      compose.score.dev/workload-name: aoa-bridge
+      outernet.internal/dockerfile: aoa-bridge=workloads/aoa-bridge/Dockerfile
+    hostname: aoa-bridge
+networks:
+  aoa-bridge-net: {}
+name: placeframe-capture-tool

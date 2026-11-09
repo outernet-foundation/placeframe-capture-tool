@@ -1,0 +1,14 @@
+services:
+  aoa-gateway-aoa-gateway:
+    image: ghcr.io/outernet-foundation/placeframe-capture-tool/aoa-gateway:${AOA_GATEWAY__BOATYARD_TREE__AOA_GATEWAY_SHA}
+    networks:
+      aoa-gateway-net:
+        aliases:
+        - aoa-gateway
+    annotations:
+      compose.score.dev/workload-name: aoa-gateway
+      outernet.internal/dockerfile: aoa-gateway=workloads/aoa-gateway/Dockerfile
+    hostname: aoa-gateway
+networks:
+  aoa-gateway-net: {}
+name: placeframe-capture-tool
