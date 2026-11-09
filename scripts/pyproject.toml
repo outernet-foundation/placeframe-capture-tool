@@ -4,8 +4,9 @@ version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
     "bashrun>=0.1.0",
-    "docker-devkit>=0.1.15",
+    "boatyard>=0.7.1",
     "placeframe-common==2.0.0.dev1340",
+    "pyyaml>=6.0",
     "typer>=0.15",
 ]
 
@@ -18,3 +19,6 @@ packages = ["src/scripts"]
 
 [project.scripts]
 install-zed = "scripts.install_zed.orchestrator:app"
+
+[tool.deptry.per_rule_ignores]
+DEP002 = ["boatyard"]
