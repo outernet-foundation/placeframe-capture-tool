@@ -108,13 +108,14 @@ namespace Placeframe.Client
             _ => new Color(0.90f, 0.25f, 0.25f, 1f),
         };
 
-        private static string LabelForBanner(ZedStatusKind kind) => kind switch
+        private static string BannerLabelFor(ZedStatusKind kind, string errorDetail) => kind switch
         {
             ZedStatusKind.Stabilizing => "Hold the Zed still and level — stabilizing…",
             ZedStatusKind.Unreachable => "Zed box not reachable",
             ZedStatusKind.LostMidCapture => "Connection lost to Zed box",
             ZedStatusKind.DegradedDiskLow => "Zed box disk low",
-            ZedStatusKind.DegradedError => "Zed box camera error",
+            ZedStatusKind.DegradedError =>
+                string.IsNullOrEmpty(errorDetail) ? "Zed box camera error" : $"Last capture failed: {errorDetail}",
             _ => "",
         };
 
@@ -153,7 +154,10 @@ namespace Placeframe.Client
                             }),
                             Text(new()
                             {
-                                value = zedStatusObservable.ObservableSelect(LabelForBanner),
+                                value = Observables.ObservableCombineValues(
+                                    zedStatusObservable,
+                                    App.state.zedErrorDetail,
+                                    BannerLabelFor),
                                 style =
                                 {
                                     horizontalAlignment = Props.Value(TMPro.HorizontalAlignmentOptions.Center),
@@ -215,7 +219,10 @@ namespace Placeframe.Client
                                             return false;
                                         if (mode != DeviceType.Zed)
                                             return true;
-                                        return zed == ZedStatusKind.Ready || zed == ZedStatusKind.Recording;
+                                        // DegradedError stays interactable: a new start attempt
+                                        // is the only thing that clears the box-side error latch.
+                                        return zed == ZedStatusKind.Ready || zed == ZedStatusKind.Recording
+                                            || zed == ZedStatusKind.DegradedError;
                                     }),
                                 layout = new()
                                 {

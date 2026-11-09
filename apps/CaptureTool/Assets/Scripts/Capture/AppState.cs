@@ -91,6 +91,8 @@ namespace Placeframe.Client
         public StateValue<ZedStatusKind> zedStatus { get; private set; } =
             new StateValue<ZedStatusKind>(ZedStatusKind.Unknown);
         public StateValue<bool> zedReachable { get; private set; }
+        public StateValue<string> zedErrorDetail { get; private set; } =
+            new StateValue<string>("");
 
         public StateValue<bool> localizing { get; private set; }
         public StateValue<Guid> mapForLocalization { get; private set; }
