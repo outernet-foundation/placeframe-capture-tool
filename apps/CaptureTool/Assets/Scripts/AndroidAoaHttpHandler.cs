@@ -72,11 +72,16 @@ namespace Placeframe.Client
             }
             catch (Exception exception)
             {
+                // Expected AOA pipe failures repeat at poll cadence; the stack
+                // trace is logged once per failure episode by the poll loops
+                // (ZedCaptureController / LogDrainController), so here only the
+                // exception type rides along.
                 if (exception is AndroidJavaException || exception is IOException || exception is OperationCanceledException)
                     Log.Info(
-                        LogGroup.Zed, exception,
-                        "AOA threw id={RequestId} {Method} {RequestUri} {ElapsedMs}ms",
-                        requestId, request.Method.Method, request.RequestUri, stopwatch.ElapsedMilliseconds
+                        LogGroup.Zed,
+                        "AOA threw id={RequestId} {Method} {RequestUri} {ElapsedMs}ms {ExceptionType}",
+                        requestId, request.Method.Method, request.RequestUri, stopwatch.ElapsedMilliseconds,
+                        exception.GetType().Name
                     );
                 else
                     Log.Error(
