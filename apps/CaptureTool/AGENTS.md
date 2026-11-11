@@ -6,6 +6,14 @@ Unity 6 project for the phone-side Capture Tool. Talks to the ZED box over USB v
 
 Capture rows POST reconstructions with no `ReconstructionOptions` payload. The reconstructor derives priors-on vs priors-off from the rig itself (multi-camera ⇒ priors-off; monocular ⇒ priors-on) — there is no device-type-driven default at the API layer. The capture app does not expose an options form, does not cache one, and does not reconstruct one from prior runs. The generated C# `ReconstructionOptions` DTO stays available for API-direct consumers, but the phone is not one of them. Don't re-add an options dialog on the grounds of "operator flexibility."
 
+## Upload keep-alive (foreground service)
+
+Uploads run under `UploadService` (`Assets/Plugins/Android/upload-foreground-service.androidlib`), a `dataSync` foreground service holding a partial wakelock. Without it, screen-off breaks every upload leg: the cached-apps freezer SIGSTOPs the process, Doze cuts the wifi leg to the API, and CPU suspend stalls the AOA pipe until box-side `aoa_bridge` tears it down after 5s of un-drained bulk writes. The FGS exempts the process from the freezer and Doze network cuts; the wakelock covers the USB leg, which has no network traffic to hold wakeup sources of its own.
+
+`UploadForegroundService.Acquire/Release` (`Assets/Scripts/UploadForegroundService.cs`) is the only C# surface: a refcount where each `CaptureController.EnqueueUpload` holds a reference for its full duration (queued + active — the refcount wraps the semaphore wait too, since `_uploadOrder` empties while the active upload is still in flight). The service must be started while the app is foregrounded (Android 12+ restricts background FGS starts), so only ever acquire it from UI-tap-driven flows. Any new long-running transfer takes a reference the same way.
+
+`POST_NOTIFICATIONS` is declared but never runtime-requested: on Android 13+ fresh installs the shade notification is suppressed (the FGS itself is unaffected and still shows as the task-manager chip). Notification progress ticks come from the `Progress<UploadProgress>` callback on the Unity main thread, so they pause while the main thread is frozen during screen-off — the notification goes stale until wake, by design.
+
 ## Invoking Unity from a Pulsar slot
 
 Use `uv run --locked build-unity` (or `uvx --from unity-devkit build-unity`) for every Unity invocation; never call `/opt/unity/.../Unity` directly.
