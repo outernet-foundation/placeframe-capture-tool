@@ -106,6 +106,11 @@ namespace Placeframe.Client
                     capture.clientProgress.value = p.Percent;
                     capture.uploadBytesPerSecond.value = p.BytesPerSecond;
                     lastProgress = p;
+                    UploadForegroundService.UpdateNotification(
+                        p.Percent,
+                        p.BytesPerSecond is double bps && bps > 0
+                            ? ByteFormatting.FormatBytesPerSecond(bps)
+                            : null);
                     Log.Info(
                         LogGroup.Capture,
                         "Upload tick capture={CaptureId} sent={BytesSent}B total={BytesTotal}B percent={Percent}",
