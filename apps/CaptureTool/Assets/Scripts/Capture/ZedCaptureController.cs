@@ -106,7 +106,7 @@ public static class ZedCaptureController
         if (capturesApi != null)
             throw new InvalidOperationException("ZedCaptureController.Initialize already called");
 
-        capturesHttpClient = new HttpClient(new ProgressTrackingHandler { InnerHandler = new AndroidAoaHttpHandler() })
+        capturesHttpClient = new HttpClient(new AndroidAoaHttpHandler())
         {
             BaseAddress = new Uri(baseUrl),
             Timeout = requestTimeout,
@@ -208,7 +208,7 @@ public static class ZedCaptureController
         return new FileParameter(
             $"{captureId}.tar",
             "application/x-tar",
-            new LengthOnlyStream(response.Data.Content, long.Parse(response.Headers["Content-Length"][0])));
+            new Placeframe.Client.LengthOnlyStream(response.Data.Content, long.Parse(response.Headers["Content-Length"][0])));
     }
 
     public static async UniTask DeleteCapture(Guid captureId, CancellationToken cancellationToken = default)
@@ -276,7 +276,8 @@ public static class ZedCaptureController
                 }
                 catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
                 {
-                    Log.Info(LogGroup.Zed, exception, "health poll request failed");
+                    if (consecutiveFailures == 0)
+                        Log.Info(LogGroup.Zed, exception, "health poll request failed");
                 }
 
                 consecutiveFailures = response == null ? consecutiveFailures + 1 : 0;
