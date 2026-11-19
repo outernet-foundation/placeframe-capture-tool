@@ -772,8 +772,11 @@ namespace Placeframe.Client
                                                                 capture.reconstruction,
                                                                 capture.clientProgress,
                                                                 capture.uploadBytesPerSecond,
-                                                                capture.uploadQueuePosition,
-                                                                capture.uploadQueueDepth,
+                                                                capture.clientUploadPhase,
+                                                                Observables.ObservableCombineValues(
+                                                                    capture.uploadQueuePosition,
+                                                                    capture.uploadQueueDepth,
+                                                                    (position, depth) => (position, depth)),
                                                                 CaptureStatusLabel
                                                             ),
                                                             interactable = capture.status.ObservableSelect(CaptureStatusIsActionable),

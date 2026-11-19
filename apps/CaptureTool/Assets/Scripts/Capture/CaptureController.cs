@@ -172,23 +172,31 @@ namespace Placeframe.Client
 
         public static async UniTask EnqueueUpload(CaptureState capture)
         {
-            EnterUploadQueue(capture);
+            UploadForegroundService.Acquire();
             try
             {
-                await _uploadSemaphore.WaitAsync().AsUniTask();
-            }
-            finally
-            {
-                LeaveUploadQueue(capture);
-            }
+                EnterUploadQueue(capture);
+                try
+                {
+                    await _uploadSemaphore.WaitAsync().AsUniTask();
+                }
+                finally
+                {
+                    LeaveUploadQueue(capture);
+                }
 
-            try
-            {
-                await UIElements.Upload(capture);
+                try
+                {
+                    await UIElements.Upload(capture);
+                }
+                finally
+                {
+                    _uploadSemaphore.Release();
+                }
             }
             finally
             {
-                _uploadSemaphore.Release();
+                UploadForegroundService.Release();
             }
         }
 
