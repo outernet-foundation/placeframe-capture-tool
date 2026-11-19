@@ -276,7 +276,8 @@ public static class ZedCaptureController
                 }
                 catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
                 {
-                    Log.Info(LogGroup.Zed, exception, "health poll request failed");
+                    if (consecutiveFailures == 0)
+                        Log.Info(LogGroup.Zed, exception, "health poll request failed");
                 }
 
                 consecutiveFailures = response == null ? consecutiveFailures + 1 : 0;

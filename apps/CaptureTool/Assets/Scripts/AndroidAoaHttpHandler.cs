@@ -72,11 +72,13 @@ namespace Placeframe.Client
             }
             catch (Exception exception)
             {
+                // Log only the exception type because the poll loops log the stack once per episode
                 if (exception is AndroidJavaException || exception is IOException || exception is OperationCanceledException)
                     Log.Info(
-                        LogGroup.Zed, exception,
-                        "AOA threw id={RequestId} {Method} {RequestUri} {ElapsedMs}ms",
-                        requestId, request.Method.Method, request.RequestUri, stopwatch.ElapsedMilliseconds
+                        LogGroup.Zed,
+                        "AOA request failed id={RequestId} {Method} {RequestUri} {ElapsedMs}ms {ExceptionType}",
+                        requestId, request.Method.Method, request.RequestUri, stopwatch.ElapsedMilliseconds,
+                        exception.GetType().Name
                     );
                 else
                     Log.Error(

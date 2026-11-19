@@ -118,6 +118,8 @@ public static class LogDrainController
 
     private static async UniTask LogDrainLoop(CancellationToken cancellationToken)
     {
+        int consecutiveFailures = 0;
+
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -126,10 +128,13 @@ public static class LogDrainController
                 try
                 {
                     hasMore = await LogDrainOnce(cancellationToken);
+                    consecutiveFailures = 0;
                 }
                 catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
                 {
-                    Log.Info(LogGroup.Zed, exception, "log drain tick failed");
+                    if (consecutiveFailures == 0)
+                        Log.Info(LogGroup.Zed, exception, "log drain tick failed");
+                    consecutiveFailures++;
                 }
 
                 if (!hasMore)
