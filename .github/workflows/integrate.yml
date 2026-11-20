@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [dev]
+    types: [opened, synchronize, reopened, labeled]
 
 concurrency:
   group: integrate-${{ github.ref }}
@@ -13,24 +14,30 @@ permissions:
   contents: read
 
 jobs:
+  rebase:
+    permissions:
+      contents: write
+      pull-requests: read
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/rebase.yml@e504a68b846693ae3702892e0a236c634b6d713f
+
   mirror-images:
     permissions:
       contents: read
       packages: write
-    uses: outernet-foundation/github-actions-toolkit/.github/workflows/mirror.yml@f2d576acbceeca8afb324152aad8e4928d5a769b
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/mirror.yml@e504a68b846693ae3702892e0a236c634b6d713f
 
   preflight:
-    needs: [mirror-images]
+    needs: [rebase, mirror-images]
     permissions:
       contents: read
-    uses: outernet-foundation/github-actions-toolkit/.github/workflows/preflight.yml@f2d576acbceeca8afb324152aad8e4928d5a769b
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/preflight.yml@e504a68b846693ae3702892e0a236c634b6d713f
 
   build-unity:
     needs: [preflight]
     permissions:
       contents: read
       packages: write
-    uses: outernet-foundation/github-actions-toolkit/.github/workflows/build-unity.yml@f2d576acbceeca8afb324152aad8e4928d5a769b
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/build-unity.yml@e504a68b846693ae3702892e0a236c634b6d713f
     secrets:
       unity-email: ${{ secrets.UNITY_EMAIL }}
       unity-password: ${{ secrets.UNITY_PASSWORD }}
@@ -45,11 +52,24 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: outernet-foundation/github-actions-toolkit/.github/workflows/build-docker.yml@f2d576acbceeca8afb324152aad8e4928d5a769b
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/build-docker.yml@e504a68b846693ae3702892e0a236c634b6d713f
 
   release-pr-builds:
     needs: [build-unity, build-docker]
     permissions:
       contents: write
       packages: read
-    uses: outernet-foundation/github-actions-toolkit/.github/workflows/release-pr-builds.yml@f2d576acbceeca8afb324152aad8e4928d5a769b
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/release-pr-builds.yml@e504a68b846693ae3702892e0a236c634b6d713f
+
+  merge-if-ready:
+    needs: [release-pr-builds]
+    permissions:
+      contents: write
+      pull-requests: read
+      packages: write
+    concurrency:
+      group: merge
+      queue: max
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/merge.yml@e504a68b846693ae3702892e0a236c634b6d713f
+    secrets:
+      merge-bot-private-key: ${{ secrets.MERGE_BOT_APP_PRIVATE_KEY }}

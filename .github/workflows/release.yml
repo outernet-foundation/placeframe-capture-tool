@@ -18,7 +18,7 @@ jobs:
       contents: write
       packages: read
     steps:
-      - uses: outernet-foundation/github-actions-toolkit/.github/actions/release@f2d576acbceeca8afb324152aad8e4928d5a769b
+      - uses: outernet-foundation/github-actions-toolkit/.github/actions/release@e504a68b846693ae3702892e0a236c634b6d713f
         with:
           channel: dev
 
@@ -29,6 +29,6 @@ jobs:
       contents: write
       packages: write
     steps:
-      - uses: outernet-foundation/github-actions-toolkit/.github/actions/release@f2d576acbceeca8afb324152aad8e4928d5a769b
+      - uses: outernet-foundation/github-actions-toolkit/.github/actions/release@e504a68b846693ae3702892e0a236c634b6d713f
         with:
           channel: stable
