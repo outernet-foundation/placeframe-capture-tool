@@ -51,7 +51,7 @@ namespace Placeframe.Client
         private static HttpMessageHandler CreateTransportHandler() =>
             new LoggingHttpHandler
             {
-                InnerHandler = new ProgressTrackingHandler { InnerHandler = new HttpClientHandler() }
+                InnerHandler = new ProgressReportingHttpHandler()
             };
 
         private static void HandleConnectRequestedChanged(IReadOnlyList<IStateOperation> args)

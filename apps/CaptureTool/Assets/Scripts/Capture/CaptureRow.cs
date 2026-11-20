@@ -1,4 +1,6 @@
 using System;
+using System.Net.Http;
+using System.Threading;
 
 using Cysharp.Threading.Tasks;
 
@@ -14,6 +16,7 @@ using ObserveThing;
 
 using Placeframe.Core;
 
+using PlaceframeApiClient.Api;
 using PlaceframeApiClient.Client;
 
 using PlaceframeApiClient.Model;
@@ -31,13 +34,13 @@ namespace Placeframe.Client
             ReconstructionReadWithQueue reconstruction,
             float? clientProgress,
             double? uploadBytesPerSecond,
-            int? uploadQueuePosition,
-            int? uploadQueueDepth) =>
+            UploadPhase? clientUploadPhase,
+            (int? position, int? depth) uploadQueue) =>
             status switch
             {
                 CaptureUploadStatus.NotUploaded => "Upload",
-                CaptureUploadStatus.Queued => $"Upload Queued{UploadQueuedSuffix(uploadQueuePosition, uploadQueueDepth)}",
-                CaptureUploadStatus.Uploading => "Uploading" + ClientProgressSuffix(clientProgress) + UploadSpeedSuffix(uploadBytesPerSecond),
+                CaptureUploadStatus.Queued => $"Upload Queued{UploadQueuedSuffix(uploadQueue.position, uploadQueue.depth)}",
+                CaptureUploadStatus.Uploading => UploadPhaseLabel(clientUploadPhase) + ClientProgressSuffix(clientProgress) + UploadSpeedSuffix(uploadBytesPerSecond),
                 CaptureUploadStatus.ReconstructionNotStarted => "Reconstruct",
                 CaptureUploadStatus.Reconstructing => ReconstructingPhaseLabel(reconstruction),
                 CaptureUploadStatus.Uploaded => "Create Map",
@@ -49,11 +52,14 @@ namespace Placeframe.Client
         private static string UploadQueuedSuffix(int? position, int? depth) =>
             position == null || depth == null ? "" : $" [{position}/{depth}]";
 
+        private static string UploadPhaseLabel(UploadPhase? phase) =>
+            phase == UploadPhase.Draining ? "Fetching" : "Uploading";
+
         private static string ClientProgressSuffix(float? clientProgress) =>
             clientProgress is float p && p >= 0f ? $" {p:0}%" : "";
 
         private static string UploadSpeedSuffix(double? uploadBytesPerSecond) =>
-            uploadBytesPerSecond is double bps && bps > 0 ? " · " + ByteFormatting.FormatBytesPerSecond(bps) : "";
+            " · " + ByteFormatting.FormatBytesPerSecond(uploadBytesPerSecond is double bps && bps > 0 ? (long)bps : 0);
 
         public static bool CaptureStatusIsActionable(CaptureUploadStatus status) =>
             status == CaptureUploadStatus.NotUploaded
@@ -103,13 +109,20 @@ namespace Placeframe.Client
                 // regardless of which worker the handler chain reports from.
                 var progress = new Progress<UploadProgress>(p =>
                 {
+                    capture.clientUploadPhase.value = p.Phase;
                     capture.clientProgress.value = p.Percent;
                     capture.uploadBytesPerSecond.value = p.BytesPerSecond;
                     lastProgress = p;
+                    var speedText = ByteFormatting.FormatBytesPerSecond(p.BytesPerSecond is double bps && bps > 0 ? (long)bps : 0);
+                    UploadForegroundService.UpdateNotification(
+                        p.Phase == UploadPhase.Draining ? "Fetching" : "Uploading",
+                        p.Percent,
+                        speedText);
                     Log.Info(
                         LogGroup.Capture,
-                        "Upload tick capture={CaptureId} sent={BytesSent}B total={BytesTotal}B percent={Percent}",
+                        "Upload tick capture={CaptureId} phase={Phase} sent={BytesSent}B total={BytesTotal}B percent={Percent}",
                         id,
+                        p.Phase,
                         p.BytesSent,
                         p.BytesTotal,
                         p.Percent ?? -1f);
@@ -130,6 +143,7 @@ namespace Placeframe.Client
 
                 capture.clientPhase.value = CaptureClientPhase.Uploading;
                 capture.clientProgress.value = null;
+                capture.clientUploadPhase.value = null;
                 capture.uploadBytesPerSecond.value = null;
 
                 var captureData = type switch
@@ -144,16 +158,23 @@ namespace Placeframe.Client
                 Log.Info(LogGroup.Capture, "Upload starting capture={CaptureId} size={BytesTotal}B", id, capture.sessionSizeBytes.value);
 
                 CaptureSessionRead captureSession;
-                using (HttpProgressContext.Set(progress))
-                {
-                    captureSession = await VisualPositioningSystem.Api
-                        .CreateCaptureSessionAsync(
-                            type,
-                            captureData,
-                            id: id,
-                            name: capture.name.value,
-                            recordedAt: capture.recordedAt.value);
-                }
+                var apiUrl = App.state.settings.apiUrl.value;
+                var uploadApi = new DefaultApi(
+                    new HttpClient(
+                        new UploadProgressHandler(progress) { InnerHandler = AuthManager.HttpMessageHandler },
+                        disposeHandler: false)
+                    {
+                        BaseAddress = new Uri(apiUrl),
+                        Timeout = Timeout.InfiniteTimeSpan
+                    },
+                    new Configuration { BasePath = apiUrl, Timeout = Timeout.InfiniteTimeSpan });
+
+                captureSession = await uploadApi.CreateCaptureSessionAsync(
+                    type,
+                    captureData,
+                    id: id,
+                    name: capture.name.value,
+                    recordedAt: capture.recordedAt.value);
 
                 Log.Info(LogGroup.Capture, "Upload finished capture={CaptureId} sent={BytesSent}B", id, lastProgress.BytesSent);
 
@@ -163,6 +184,7 @@ namespace Placeframe.Client
                 capture.reconstruction.value = reconstruction;
                 capture.clientPhase.value = CaptureClientPhase.Idle;
                 capture.clientProgress.value = null;
+                capture.clientUploadPhase.value = null;
                 capture.uploadBytesPerSecond.value = null;
             }
             catch (Exception ex)
@@ -377,8 +399,11 @@ namespace Placeframe.Client
                                     capture.reconstruction,
                                     capture.clientProgress,
                                     capture.uploadBytesPerSecond,
-                                    capture.uploadQueuePosition,
-                                    capture.uploadQueueDepth,
+                                    capture.clientUploadPhase,
+                                    Observables.ObservableCombineValues(
+                                        capture.uploadQueuePosition,
+                                        capture.uploadQueueDepth,
+                                        (position, depth) => (position, depth)),
                                     CaptureStatusLabel
                                 ),
                                 interactable = capture.status.ObservableSelect(CaptureStatusIsActionable),
