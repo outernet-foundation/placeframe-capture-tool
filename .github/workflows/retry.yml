@@ -1,0 +1,18 @@
+name: Retry
+
+on:
+  workflow_dispatch:
+    inputs:
+      run-id:
+        description: Run to re-run once it completes
+        type: number
+        required: true
+
+permissions:
+  actions: write
+
+jobs:
+  retry:
+    uses: outernet-foundation/github-actions-toolkit/.github/workflows/retry.yml@1d7f9dadd9f4714a4a8ee689b8da146c47b1b44a
+    with:
+      run-id: ${{ inputs.run-id }}
