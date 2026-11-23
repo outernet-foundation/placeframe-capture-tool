@@ -165,6 +165,7 @@ namespace Placeframe.Client
         public StateValue<CaptureUploadStatus> status { get; private set; }
         public StateValue<CaptureClientPhase> clientPhase { get; private set; }
         public StateValue<float?> clientProgress { get; private set; }
+        public StateValue<UploadPhase?> clientUploadPhase { get; private set; }
         public StateValue<double?> uploadBytesPerSecond { get; private set; }
         public StateValue<int?> uploadQueuePosition { get; private set; }
         public StateValue<int?> uploadQueueDepth { get; private set; }
